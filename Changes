@@ -1,0 +1,746 @@
+# This file documents the revision history for Perl extension Catalyst.
+
+5.7015  2008-10-15 22:57:00
+         - Workaround change in LWP that broke a cookie test (RT #40037)
+
+5.7014  2008-05-25 15:26:00
+         - Addition of .conf in restart regex in Catalyst::Engine::HTTP::Restarter::Watcher
+         - Fix regression for relative uri_for arguments after a forward()   
+           introduced in 5.7013 (Peter Karman) -  
+         - Fix regression for "sub foo : Path {}" in the root controller which 
+           was introduced when attempting to allow "0" as a Path.}))
+
+5.7013  2008-05-16 18:20:00
+        - Provide backwards compatability methods in Catalyst::Stats
+        - Fix subdirs for scripts that run in subdirs more than one level deep.
+        - Added test and updated docs for handling the Authorization header
+          under mod_fastcgi/mod_cgi.
+        - Fixed bug in HTTP engine where the connection was not closed properly if the
+          client disconnected before sending any headers. (Ton Voon)
+        - POD fix, IO::FileHandle => IO::Handle (RT #35690)
+        - Fix grammar on welcome page (RT #33236)
+        - Fix for Path('0') handling (RT #29334)
+        - Workaround for Win32 and c3_mro.t (RT #26452, tested by Kenichi Ishigaki)
+        - Fix for encoding query parameters (edenc)
+        - Fix Chained multiple test (t0m)
+
+5.7012  2007-12-16 23:44:00
+        - Fix uri_for()'s and uri_with()'s handling of multibyte chars
+          (Daisuke Murase)
+        - Fix __PACKAGE__->config->{foo} = 'bar' case with subclassing
+        - Add Catalyst::Stats (Jon Schutz)
+        - Fixed a bug where ?q=bar=baz is decoded as q=>'bar', not 'bar=baz'.
+          (Tatsuhiko Miyagawa, Masahiro Nagano)
+        - Fixed a bug where -rr (restart regex) command line option could cause
+          shell errors. (Aristotle Pagaltzis, Chisel Wright)
+
+5.7011  2007-10-18 20:40:00
+        - Allow multiple restart directories and added option to follow
+          symlinks in the HTTP::Restarter engine (Sebastian Willert)
+        - Fixed t/optional_http-server-restart.t so it actually tests
+          if the server restarted or notified of an error (Sebastian Willert)
+        - Return child PID from the HTTP engine when run with the 'background' option.
+          (Emanuele Zeppieri)
+        - Fixed bug in HTTP engine where writes could fail with
+          'Resource temporarily unavailable'.
+        - Fixed bug where %2b in query parameter is doubly decoded to ' ', instead of '+'
+          (RT #30087, Gavin Henry, Tatsuhiko Miyagawa, Oleg Pronin)
+        - Fixed bug where req->base and req->uri would include a port number when running
+          in SSL mode.
+        - Removed unnecessary sprintf in debug mode that caused warnings on locales where
+          commas are used for decimal markers.
+        - Improved error message for case when server picks up editor save
+          files as module names. (James Mastros)
+
+5.7010  2007-08-22 07:41:00
+        - Resource forks in 5.7009
+
+5.7009  2007-08-22 00:14:00
+        - Moved Manual.pod to Manual.pm and clarified status of 
+          Catalyst-Manual dist
+        - Doc patches to Catalyst::Controller
+        - remove ignore_loaded from plugin load, commenting why
+        - document the ignore_loaded feature in Catalyst::Utils
+        - Add testing of inline plugins.
+
+5.7008  2007-08-13 08:40:00
+        - Added $c->request->query_keywords for getting the keywords
+          (a query string with no parameters).
+        - Add undef warning for uri_for.
+        - Fix bug where a nested component would be setup twice.
+        - Make ensure_class_loaded behave better with malformed class name.
+        - Make _register_plugin use ensure_class_loaded.
+        - Remove 'Argument "??" isn't numeric in sprintf' warning.
+          (Emanuele Zeppieri)
+        - Fixed a bug where Content-Length could be set to 0 if a filehandle
+          object in $c->response->body did not report a size.
+        - Fixed issue where development server running in fork mode did not
+          properly exit after a write error.
+          (http://rt.cpan.org/Ticket/Display.html?id=27135)
+        - Remove warning for captures that are undef.
+        - Fixed $c->read and parse_on_demand mode.
+        - Fixed a bug with the HTTP engine where very large response bodies
+          would not be sent properly.
+
+5.7007  2007-03-13 14:18:00
+        - Many performance improvements by not using URI.pm:
+          * $c->uri_for (approx. 8x faster)
+          * $c->engine->prepare_path (approx. 27x faster)
+          * $c->engine->prepare_query_parameters (approx. 5x faster)
+        - Updated HTTP::Body dependency to 0.9 which fixes the following issues:
+          * Handle when IE sometimes sends an extra CRLF after the POST body.
+          * Empty fields in multipart/form-data POSTs are no longer ignored.
+          * Uploaded files with the name "0" are no longer ignored.
+        - Sending SIGHUP to the dev server will now cause it to restart.
+        - Allow "0" for a path in uri_for.
+        - Performance and stability improvements to the built-in HTTP server.
+        - Don't ignore file uploads if form contains a text field with the same name.
+          (Carl Franks)
+        - Support restart_delay of 0 (for use in the POE engine).
+        - Skip body processing if we don't have a Content-Length header.
+          Results in about a 9% performance increase when handling GET/HEAD
+          requests.
+        - Add a default body to redirect responses.
+        - MyApp->model/view now looks at MyApp->config->{default_view/model}
+          (Bogdan Lucaciu)
+
+5.7006   2006-11-15 14.18
+        - Updated manifest
+        - Fix Slurp dependency
+        - Updated HTTP::Body dependency to 0.6, 0.5 can break on large POST 
+          requests.
+        - Skip utf8 fix for undef values in uri_with() and uri_for()
+
+5.7005   2006-11-07 19:37:35
+        - Fixed lighttpd tests to be properly skipped.
+        - Moved IE workarounds to exist only in the HTTP engine.
+        - Added installation instructions (from Catalyst-Manual dist)
+
+5.7004   2006-11-06 20:48:35
+        - Fix Engine::HTTP crash when using IE. (Jesper Krogh, Peter Edwards)
+        - clean up Catalyst::Utils to handle some edge cases
+        - Properly work around lighttpd PATH_INFO vs. SCRIPT_NAME bug
+          (Mark Blythe)
+        - add _application accessor to Catalyst::Base
+        - Support current_view
+        - Allow use of Catalyst::Test without app name (Ton Voon, Altinity)
+        - Catalyst::Manual moved to its own package
+        - Add option to FastCGI engine to send errors to stdout, not the web server
+        - Use Module::Install's auto_install to install prerequisite modules 
+        - various documentation fixes and improvements
+        
+5.7003   2006-09-21 16:29:45
+        - Additions and updates to tutorial
+
+5.7002   2006-09-17 19:35:32
+        - unescape captures to match args
+        - fix for relative Chained under namespace '' (root)
+        - fix for hashrefs in action attributes from config
+        - fix for Chained to require correct number of CaptureArgs
+
+5.7001   2006-07-19 23:46:54
+        - fix for component loading
+        - uri_for and uri_with now behave as they used to with non-
+          array references
+
+5.7000   2006-07-07 08:08:08
+        - fix FCGI.pm warning message with FastCGI engine
+        - bumped inc::Module::Install to 0.63 in Makefile.PL
+        - fixes to uri_for_action for DispatchType::Chained
+        - Further doc work.
+        - Minor code cleanups 
+        - Changed catalyst.pl to depend on Catalyst::Devel
+
+5.70_03  2006-06-28 16:42:00
+        - fixup to registered plugins debug at app startup
+        - refactored Catalyst::Utils::home
+
+5.70_02  2006-06-27 11:51:00
+        - Updated tutorial.
+
+5.70_01  2006-06-26 10:49:00
+
+        - fixed a Catalyst::Base bug causing duplicate action registrations
+        - modified DispatchTypes to support multiple registrations
+        - added Catalyst::Runtime module as dist marker
+        - added Catalyst::ActionChain and Chained DispatchType
+        - removed retarded registration requirement in dispatcher
+        - removed Module::Pluggable::Fast hack in favor of
+          Module::Pluggable::Object
+        - extended uri_for, added dispatcher->uri_for_action
+        - added Catalyst::Base->action_for('methodname')
+        - checked and tested :Args multimethod dispatch
+        - added ability to set action attributes from controller config
+        - added merge_config_hashes() as a convenience method
+        - Swapped out CGI::Cookie in favour of CGI::Simple::Cookie
+        - Removed test dependencies on Test::NoWarnings, Test::MockObject
+        - Removed dependency on UNIVERSAL::require
+        - Split out Catalyst::Helper into a new distribution
+        - un-bundled the plugins as they are now pre-reqs for Catalyst::Helper
+        - nuked each() out of core with prejudice (due to lurking buglets)
+        - Added tests from phaylon for dispatcher precedence
+        - Use Class::Inspector->loaded($class) instead of $class->can('can')
+        - Added ActionClass attribute
+        - Removed Test::WWW::Mechanize::Catalyst from Makefile.PL (circular dep)
+        - Updated docs for Catalyst::Component
+        - Separated execute and dispatch on Catalyst::Action
+        - cleaned up logging and debug output
+        - significant documentation revisions
+        - Added warning for setup being called twice
+        - Fix pod to use DBIC::Schema instead of DBIC model
+        - Fix ->config failing to copy _config for subclassing
+        - Updated log format
+        - Updated debug dump
+
+5.6902  2006-05-04 13:00:00
+        - Remove tarballs and OSX metadata files.
+
+5.6901  2006-05-03 11.17:00
+        - Module::Install didn't overwrite META.yml. 
+
+5.6900  2006-05-03 11.17:00
+        - Stupid pause indexer can't count.
+        - Better fix for Catalyst::Test
+        - more tests.
+
+5.682   2006-04-27 13:51:00
+        - Damn OSX attributes again :( 
+
+5.681   2006-04-27 08:47:00
+        - Updated manifest.
+        - Add basename to core . (Deprecates Catalyst::Plugin::Basename)
+    
+5.68    2006-04-26 12:23:00
+        - ConfigLoader: Updated to version 0.06
+        - fixed undef warnings in uri_for() and uri_with()
+        - Fixed Catalyst::Test to report errors on failed Class load
+
+5.678   2006-04-24 12:30:00
+        - Re-release of 5.67 without OSX metadata files.
+
+5.67    2006-04-23 08:50:00
+        - Added $c->req->uri_with() helper
+        - ConfigLoader: Updated to version 0.05
+        - Fix up Engine to avoid a new 5.8.8 warning
+        - Added app name with :: support for PAR
+        - Added $c->models/views/controllers
+        - Static::Simple: Unescape the URI path before looking for the file.
+          This fixes issues with files that have spaces.
+        - Looping and recursion tests plus a fix
+        - Added lots of API documentation. Refactored main pod.
+        - Changed default behaviors for $c->model/$c->controller/$c->view
+          to more sane settings.
+        - added the clear_errors method - an alias for error(0)
+        - Added tmpdir option for uploads (woremacx)
+        - Applied patch from GEOFFR to allow normal filehandles.
+        - Refactored Dispatcher internals for better readability and speedup
+          (stress tests run 12% faster)
+        - Allow $c->error to run as a class method
+
+5.66    2006-03-10 17:48:00
+        - Added Test::WWW::Mechanize::Catalyst support
+        - Cleaned generated tests
+        - Added Root controller concept
+        - Updated ConfigLoader plugin to version 0.04
+
+5.65    2006-02-21 10:34:00
+        - Added plugin introspection.
+        - Support optional hashref as last param for parameters in uri_for.
+        - Updated tutorial to be more complete.
+        - Applied args patch from antirice (Fixes Ticket #67)
+
+5.64    2006-02-07 20:29:00
+        - Fixed bug in FastCGI proc manager mode where pm_post_dispatch
+          was not run. (Eric Wong)
+        - Cleaned up generated tests
+        - Updated YAML support to use ConfigLoader
+        - Fixed path dispatch to canonicalise correctly
+            (see http://dev.catalyst.perl.org/ticket/62)
+        - Added Catalyst::Manual::About
+
+5.63    2006-01-22 00:00:00
+        - Updated prereq versions
+
+5.62    2006-01-17 16:30:00
+        - Large update to the tutorial (castaway)
+        - Added YAML config support
+        - Added COMPONENT() and ACCEPT_CONTEXT() support
+        - Action list in debug mode is now displayed as a tree in the
+          correct execution order.
+        - Fixed engine detection to allow custom mod_perl engines.
+        - Static::Simple: Fixed bug in ignore_dirs under win32.
+        - Display version numbers of loaded plugins. (Curtis Poe)
+        - Added class and method for caught exception messages.
+        - Updated PAR support to use "make catalyst_par",
+          packages are no longer written by Makefile.PL.
+        - Automatically determine Content-Length when serving a
+          filehandle.
+        - Exceptions now return status 500.
+        - Updated for Module::Install 0.44.
+        - Fixed additional file installation for multi level app names.
+        - Added REDIRECT_URL support for applications running behind
+          a RewriteRule in Apache. (Carl Franks)
+        - Fixed FastCGI engine under win32. (Carl Franks)
+        - FastCGI doc updates (Bill Moseley)
+        - Bugfix for $c->model and friends (defined).
+
+5.61    2005-12-02 00:00:00
+        - Fixed ExtUtils::AutoInstall Bootstrap Code in Makefile.PL
+
+5.60    2005-12-01 22:15:00
+        - Fixed Path and index actions in the appclass,
+          including those that attach to /
+        - Index is now weighted higher than Path
+        - Fixed restarter and -d debug switch in server.pl.
+        - Added a warning if you attempt to retrieve a parameter
+          using $c->req->params('foo').
+        - Fixed the Module::Install::Catalyst @ISA bug
+
+5.59    2005-11-30 13:25:00
+        - Fixed shebang line for generated scripts
+        - Fixed forward to classes ($c->forward(qw/MyApp foo/))
+        - Wrap use block in begin to quelch C:C3 warnings
+        - Removed scrollbar from debug output
+        - Fixed catalyst_par_core() and catalyst_par_multiarch()
+
+5.58    2005-11-24 10:51:00
+        - Added ExtUtils::AutoInstall support
+        - Allow overriding path in Catalyst::Helper.
+        - Added -makefile to catalyst.pl to generate a new Makefile.PL.
+        - Restored Catalyst::Build with a deprecation notice.
+        - Improved PAR support
+        - Replaced -short with auto-detection
+        - Fixed prereqs, added File::Copy::Recursive
+        - Static::Simple changes:
+            - Made prepare_action play nice with other plugins by not short-
+              circuiting.
+            - Added tmpl to the ignored extensions.
+            - Fixed security problem if req->path contained '..'.
+
+5.57    2005-11-20 22:45:00
+        - Updated uri_for to accept undef actions
+        - Switched to Module::Install
+        - Renamed tests for easier editing
+        - Reformatted documentation
+        - Renamed -nonew to -force
+        - Added PAR support
+        - Added keep-alive support and bug fixes to HTTP engine.
+          (Sascha Kiefer)
+        - Added daemonize option to FastCGI engine. (Sam Vilain)
+
+5.56   2005-11-16 10:33:00
+        - Fixed FastCGI engine to not clobber the global %ENV on each
+          request. (Sam Vilain)
+        - Updated benchmarking to work with detach
+        - Fixed dispatcher, so $c->req->action(undef) works again
+        - Updated Catalyst::Test to use HTTP::Request::AsCGI
+        - Added -pidfile to external FastCGI server.
+
+5.55    2005-11-15 12:55:00
+        - Fixed multiple cookie handling
+
+5.54    2005-11-14 22:55:00
+        - Fixed a Module::Pluggable::Fast related bug
+
+5.53    2005-11-14 15:55:00
+        - Removed t/04prereq.t that was testing for non-required
+          modules.
+
+5.52    2005-11-14 10:57:00
+        - Strip '..'s in static urls to fix security issue.
+
+5.51    2005-11-14 00:45:00
+        - Changed uri_for to use namespace instead of match.
+
+5.50    2005-11-13 20:45:00
+        - Fixed minor bugs.
+        - Updated docs.
+
+5.49_05 2005-11-12 20:45:00
+        - Large update to the documentation. (David Kamholz)
+        - Fixed args handling in forward()
+        - Fixed forwarding to classes
+        - Fixed catalyst.pl-generated Build.PL Makefile section.
+        - Fixed relative forwarding
+        - Fixed forward arrows in debug output
+
+5.49_04 2005-11-09 23:00:00
+        - Made context, dispatcher, engine, request and response classes
+          configurable.
+        - Added $c->stack.
+        - Fixed dispatcher to ignore unknown attributes.
+        - Improved format of startup debug log.
+        - Updated built in server to restart on win32. (Will Hawes)
+        - Fixed streaming write from a filehandle to stop writing
+          if the browser is closed.
+        - Added $c->controller, $c->model and $c->view shortcuts.
+        - Switched to Text::SimpleTable.
+
+5.49_03 2005-11-03 12:00:00
+        - Fixed $c->req->{path} for backwards-compatibility.
+        - Allow debug to be disabled via ENV as well as enabled.
+        - Added -scripts option to catalyst.pl for script updating
+        - Changed helpers to default to long types, Controller instead of C
+        - Added Catalyst::Controller, Catalyst::Model and Catalyst::View
+          base classes
+        - Added JavaScript to debug screen to show and hide specific dumps
+        - Added _DISPATCH, _BEGIN, _AUTO, _ACTION and _END actions
+        - Added multi process external FastCGI support
+          (see myapp_fastcgi.pl -help) (Sam Vilain)
+        - Restarter process in HTTP engine now properly exits when the
+          parent app is shut down.  
+        - Improved performance of restarter loop while watching for
+          changed files.
+        - Restarter will now detect new files added to an app on systems
+          that change directory mtimes when new files are created.
+        - Restarter now properly handles modules that are deleted from an
+          application.
+        - Fixed memory leak in TestApp.
+
+5.49_02 2005-10-26 12:39:00 
+        - Whole new dispatcher!
+        - Added index action
+        - Added path_to method
+        - Added support for passing an IO::Handle object to $c->res->body.
+          (Andrew Bramble)
+        - Added a new welcome screen.
+        - Included Catalyst buttons and icons in helper.
+        - Added Static::Simple plugin to core.
+        - Added self restarting test server
+        - Added filename to debug output for uploaded files.
+        - Fixed forwarding with embedded arguments.
+        - Fixed handling of escaped query strings.
+        - Added upload parameters back into $c->req->params.
+        - Added multiple paths support to dispatcher
+        - Fixed bug in req->path where changing the path added a trailing
+          slash.
+        - Removed req->handle and res->handle
+        - Added prepare_body_chunk method as a hook for upload progress.
+        - Fixed bug in uri_for method when base has no path.
+        - Added automated tests for HTTP, CGI, and FastCGI servers.
+
+5.49_01 2005-10-10 10:15:00 
+        - Refactored all internals, should be 99% compatible to previous
+          versions.
+        - *IMPORTANT* The Apache engines have been moved to a separate package
+          for this release.  Please install Catalyst::Engine::Apache if you
+          need Apache support.
+
+        - Added support for calling forward with arguments in the path, i.e.
+          $c->forward('/foo/bar/arg1/arg2')
+        - Made $c->req->uri a URI object, added req->path_info for CGI compat.
+          Raw query string is available as $c->req->uri->query.
+        - Made $c->req->base a URI object.
+        - Parameters with multiple values (?a=1&a=2) now display properly
+          in the debug output.
+        - Semi-colon separators in query strings now work properly.
+        - Expanded documentation of catalyst.pl (Andrew Ford)
+        - Added support for running as a backend server behind a frontend
+          proxy so req->base and req->address are set properly.
+        - Added an 'abort' method to the Log api, so that you can
+          kill loggging for a whole request.
+        - Added $c->uri_for method to simplify url handling.
+        - Added more tests and reorganized the t directory.
+        - Reimplemented core engines, all are now CGI based for better test
+          coverage and maintainability.
+        - Added fork support to built in test server.
+        - Fixed all memory leaks.
+        - Thread-related bug fixes and tests.  We now believe the Catalyst
+          core to be thread-safe.
+        - Added streaming IO support through $c->req->read() and
+          $c->res->write()
+        - Added MyApp->config->{parse_on_demand} (streaming input)
+        - Added $c->req->handle and $c->res->handle
+        - Improved documentation
+        - Fixed mkpath in Catalyst::Helper (Autrijus Tang)
+        - Fixed bug in dispatcher where an invalid path could call a valid
+          action. (Andy Grundman)
+        - Fixed Helper so it works with CRLF line-endings. (Andy Grundman)
+
+5.33  2005-08-10 15:25:00
+        - Now with updated manifest.
+
+5.32  2005-08-10 15:10:00
+        - Dispatcher might fail if object returns false. (Florian Ragwitz)
+
+5.31  2005-06-04 12:35:00 (never released to CPAN)
+
+        - helpers now create .new files where files already exist and differ
+        - fixed $Data::Dumper::Terse (Robin Berjon)
+        - added arguments for detach
+        - new credits section in pod
+        - fixed detach to allow relative action names (Matt and Robert)
+        - added the ability to have whitespaces in Path( '' ) and Regex( '' )
+
+5.30  2005-06-04 12:35:00
+
+        - Fixed a bug where it was not possible to $c->forward to a 
+          component 
+          that was not inheriting from Catalyst::Base.
+        - Fix for inheritance bug.
+        - Allow forward with arguments.
+        - Updated cookbook
+        - Allow overriding home/root in config.
+        - make module build cons README automatically.
+        - prettify home path by resolving '..' (Andy Grundman)
+        - improved helper templates a bit, new naming scheme for tests.
+        - added support for case sensitivity, MyApp->config->{case_sensitive}
+        - added $c->detach for non-returning forwards
+        - added unified error handling, Catalyst::Exception
+        - added section on param handling in Intro.pod
+        - added $c->request->cookie
+        - added Catalyst::Setup
+        - refactored Catalyst::import()
+        - improved rendering of error messages in debug mode
+        - fixed a bug in Catalyst::Helper::mk_dir
+        - further doc changes, esp. to Intro.pod
+
+5.23  2005-06-03 02:30:00
+        - added support for non Catalyst::Base components to live in namespace
+        - improved concurrency connections in Catalyst::Engine::HTTP::Daemon
+
+5.22  2005-05-26 14:24:00
+        - improved base locating in MP engines
+        - improved error messages in C::E::HTTP::Daemon
+        - hostnames are now resolved on demand unless provided by engine
+        - fixed memory leak in $c->execute (Michael Reece, Matt S Trout)
+
+5.21  2005-05-24 14:56:00
+        - fixed a bug in https detection
+        - fixed auto chain finally
+        - added MYAPP_HOME and CATALYST_HOME environment variables
+
+5.20  2005-05-18 19:52:00
+        - improved uploads and parameters
+        - added $c->req->protocol and $c->req->secure
+        - added $c->req->user and $c->req->uri
+        - improved error message when forwarding to unknown module
+        - fixed win32 installer
+        - added deep recursion detection
+        - fixed auto actions
+        - fixed inheritance in dispatcher
+        - allow whitespaces between brackets and quoted string
+          in Path and Regex attributes
+        - new helper templates
+        - installer now supports install_base and destdir
+        - allow multiple Catalyst apps to run on the same mod_perl
+          instance (not the same app!)
+        - fixed MP2 engines
+        - removed apreq dependency from all MP engines
+        - added support for MP registry scripts
+        - added support for LocationMatch and ScriptAliasMatch in MP engines
+        - added SpeedyCGI engine
+
+5.10  2005-04-23 11:16:00
+        - updated dependencies to require latest module::pluggable::fast
+        - new installer for templates and stuff using Module::Build
+        - scripts are now prefixed, for being installable
+        IMPORTANT: You have to regenerate the script directory,
+        remove Makefile.PL and add Build.PL
+        - Added compat to install Module::Build if required.
+        - Improved: Params handling with MP engines
+        - Fixed: Params handling on POST with CGI engine (Andy Grundman)
+        - Fixed: Helper.pm on Win32 (Matt S Trout)
+
+5.03  2005-04-19 20:35:00 (Revision 462)
+        - fixed Test example (Torsten Seeman)
+        - added Plugins chapter to manual
+        - applied doc patch from Robert Boone <robert@rlb3.com>
+        - improved Dispatcher error messages.
+        - refactored so we don't need to include helper from
+          Catalyst.pm - Fixes issues with FindBin
+        - applied HTTP.pm patch from Andy Grundman <andy@hybridized.org>
+        - added plugin() method for instant plugins
+        - FCGI is no more considered experimental
+
+5.02  2005-04-18 10:00:00 
+        - fixed manifest
+
+5.01  2005-04-17 23:00:00 
+        - some documentation bugs fixed
+        - added Catalyst::Utils
+        - fixed regexp bug (Matt S Trout)
+        - fixed upload bug with MP19
+        - added $c->req->body
+        - aliased $c->res->output to $c->res->body
+        - Read AUTHOR from passwd or $ENV{AUTHOR} when 
+          generating code.
+        - extended attribute handling
+        - added global config for components
+
+5.00  2005-04-15 18:00:00
+        - new core to support inheritance trees
+        - new syntax for action declaration
+        - new helper system using TT2
+        - problems with mod_perl2 fixed
+        - added Test::Pod support
+        - added new server backend with HTTP/1.1 support
+        - added option to run tests against a remote server
+        - renamed errors() to error()
+        - more better docs
+        - countless minor improvements
+          IMPORTANT: This release is very incompatible to previous ones
+          and you have to regenerate the helper scripts again...
+
+4.34  2005-03-23 07:00:00 2005
+        - added some messages to Makefile.PL
+        - added Catalyst::Engine::Test
+        - added Catalyst::Engine::CGI::NPH
+        - simplified Catalyst::Log to be easier to implement/subclass
+        - added cgi.pl
+        - updated Catalyst::Test to use Catalyst::Engine::Test
+        - updated helper scripts
+          IMPORTANT: this will be the last time you'll have to regenerate
+          the script directory. We promise!
+
+4.33  2005-03-23 01:00:00 2005
+        - documented the log() accessor method in Catalyst (Andrew Ford)
+        - added optional arguments to Catalyst::Log methods (Andrew Ford)
+        - removed cgi-server.pl
+        - added fcgi.pl and Catalyst::Engine::FCGI
+        - fixed an undef durng make test (Dan Sully)
+        - new path test (Christian Hansen)
+          IMPORTANT: you have to regenerate the script directory again
+
+4.32  2005-03-22 02:10:00 2005
+        - made a damn typo *AAAAAAAAAAAAAAHHHH!!!*
+
+4.31  2005-03-22 02:00:00
+        - fixed inheritance (Christian Hansen)
+        - previous release was borked!
+          fixed that, but you have to regenerate the scripts again :(
+
+4.30  2005-03-21 23:00:00 
+        - more documentation (Andrew Ford)
+        - added connection informations (Christian Hansen)
+        - HTTP::Request support in Catalyst::Test (Christian Hansen)
+        - moved cgi.pl to nph-cgi.pl
+        - added Catalyst::Engine::Server (Christian Hansen)
+        - removed Catalyst::Test::server
+        - updated helper scripts
+          IMPORTANT: note that you have to regenerate script/server.pl,
+          script/cgi-server.pl and script/cgi.pl (now nph-cgi.pl)
+
+4.28  2005-03-19 22:00:00
+        - fixed isa tree (Christian Hansen)
+        - added script/cgi-server.pl, so no more server restarting after
+          code changes
+        - reworked documentation (Andrew Ford <A.Ford@ford-mason.co.uk>)
+
+4.27  2005-03-19 01:00:00
+        - debug message for parameters
+        - Fix redirects (Christian Hansen <ch@ngmedia.com>)
+        - some random fixes
+        - new helper api for Catalyst::Helper::* support
+          you have to update script/create.pl to use it
+
+4.26  2005-03-16 10:00:00
+        - fixed the weird bug that caused regex actions to fail on every
+          second request
+        - more debug messages
+        - 100% pod coverage.
+
+4.25  2005-03-12 18:00:00
+        - correct perl pathes for helper generated scripts (Tatsuhiko Miyagawa)
+        - improved cgi engine docs (Christoper Hicks)
+
+4.24  2005-03-12 01:00:00
+        - updated cookbook example  
+        - fixed base for apache and https (Andrew Ruthven)
+        
+4.23  2005-03-09 20:00:00
+        - no more regex actions in forward
+        - added support for test directories t/m, t/v and t/c
+
+4.22  2005-03-08 20:00:00
+        - catch errors in application class
+        - handle die properly.
+
+4.21  2005-03-05 17:00:00
+        - fixed docs
+
+4.20  2005-03-04 22:00:00
+        - moved bin to script
+
+4.13  2005-03-03 11:00:00
+        - improved documentation
+        - pod coverage test for helper generated apps
+        - new helper api
+
+4.12  2005-03-02 11:00:00 2005
+        - server_base sucks, removed
+        - added $c->log->dump()
+
+4.11  2005-03-02 11:00:00 2005
+        - removed some warnings
+        - improved docs
+        - private prefixed actions override private non prefixed actions
+        - added server_base
+        - updated Catalyst::Manual::Intro
+
+4.10  2005-03-02 10:00:00 2005
+        - improved documentation
+        - fixed upload bug
+        - fixed prefixed private actions bug
+        - fixed more little bugs
+
+4.01  2005-03-01 10:00:00 2005
+        - improved documentation
+        - documentation fixes (Johan Lindstrom)
+
+4.00  2005-02-27 22:00:00
+        - more verbose debug messages, especially for forward()
+        - implemented prefixed prvate actions, icluding built in
+          !?default, !?begin and !?end
+        - new Catalyst::Manual::Intro
+        - new helpers, bin/catalyst
+        - helper api
+
+3.11  2005-02-23 21:00:00
+        - added dependency to UNIVERSAL::require (Marcus Ramberg)
+        - added a little workaround for a warning in Catalyst::Test
+          (Marcus Ramberg)
+        - improved documentation for actions
+
+3.10  2005-02-19 20:00:00
+        - removed roles management from Catalyst::Engine
+          and added it to Catalyst::Plugin::Authentication::CDBI
+
+3.04  2005-02-17 21:00:00 
+        - error reporting for app class
+        - no more engine debug messages
+        - class->method forwards get resolved now
+
+3.03  2005-02-16 23:00:00 
+        - friendlier statistics
+
+3.02  2005-02-16 22:00:00
+        - fixed unintialized actions (Marcus Ramberg)
+
+3.01  2005-02-16 20:30:00
+        - better statistics
+
+3.00  2005-02-16 20:00:00
+        - real version number for CPAN.pm
+        - fixed redirect in CGI engine
+        - more statistics in debug logs
+        - ? prefix for forward()
+
+2.99_15  2005-02-02 22:00:00
+        - support for short namespaces, MyApp::M, MyApp::V and MyApp::C
+        - Replaced "Catched" with "Caught" in Catalyst::Engine
+          (Gary Ashton Jones)
+        - replaced _ with ! for private actions
+        - added ? for prefixed actions
+        - misc improvememts
+
+2.99_14  2005-01-31 22:00:00 2005
+        - arguments for _default
+        - $c->entrance removed for more flexibility
+        - added $c->req->method
+
+2.99_13  2005-01-30 18:00:00 2005
+        - POD fixes and improvements
+
+2.99_12  2005-01-28 22:00:00 2005
+        - first development release

@@ -359,9 +359,9 @@ Find an dispatch type that matches $c->req->path, and set args from it.
 sub prepare_action {
     my ( $self, $c ) = @_;
     my $req = $c->req;
+    $req->args( \my @args );
     my @path = $self->decompose_path_for_prepare_action($c, $req->path);
-    my $args = $self->dispatch_against_paths($c, \@path);
-    $req->args(@$args);
+    my $args = $self->dispatch_against_paths($c, \@path, \@args);
 
     s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg
       for grep { defined } @{$req->captures||[]};
@@ -373,11 +373,17 @@ sub prepare_action {
       if ( $c->debug && @$args );
 }
 
+=head2 $self->dispatch_against_paths($c, $path, $capture_args?)
+
+Recursive subroutine to see if we can dispatch to a given $path.
+
+=cut
+
 sub dispatch_against_paths {
     my ($self, $c, $paths, $args) = (@_, []);
     my $path = join '/', @$paths;
     $path =~ s#^/+##;
-    if($self->match_dispatch_types_to_path($c, $path, @{ $self->_dispatch_types })) {
+    if($self->match_dispatch_types_to_path($c, $path, @{ $self->dispatch_types })) {
         return $args; ## all done
     } else {
         # If not, move the last part path to args
@@ -392,6 +398,12 @@ sub dispatch_against_paths {
     }
 }
 
+=head2 $self->match_dispatch_types_to_path($c, $path, @dispatch_types)
+
+Does a $path dispatch to any of the given dispatch types? (CHECKED)
+
+=cut
+
 sub match_dispatch_types_to_path {
     my ($self, $c, $path, $dispatch_type, @dispatch_types) = @_;
     if(my $match = $self->match_dispatch_type_to_path($c, $path, $dispatch_type)) {
@@ -403,18 +415,30 @@ sub match_dispatch_types_to_path {
     }
 }
 
+=head2 $self->match_dispatch_type_to_path($c, $path, $dispatch_type)
+
+Does a given $dispatch_type match a given $path? (CHECKED)
+
+=cut
+
 sub match_dispatch_type_to_path {
     my ($self, $c, $path, $dispatch_type) = @_;
     return $dispatch_type->match($c, $path);
 }
-	
+
+=head2 $self->decompose_path_for_prepare_action($c, $path)
+
+Given a $path, as from the request object, break it up into an array of parts
+used to determine dispatching. (CHECKED)
+
+=cut
+
 sub decompose_path_for_prepare_action {
     my ($self, $c, $path) = @_;
     my @path = (split(/\//, $path));
     unshift( @path, '' ); ## Root action
     return @path;
 }
-
 
 =head2 $self->get_action( $action, $namespace )
 

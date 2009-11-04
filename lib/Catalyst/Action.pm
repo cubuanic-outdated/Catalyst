@@ -76,6 +76,32 @@ sub match {
     return scalar( @{ $c->req->args } ) == $args;
 }
 
+sub match_captures {
+    my ($self, $c) = @_;
+    if(my $match_args = $self->attributes->{MatchArgs}) {
+        return $self->_compare_args_to_signature($c, $match_args)
+    } else {
+        return 1; ## if no MatchArgs, assume all is well
+    }
+}
+
+## MatchArgs("/d/d","/w/d",...)
+sub _compare_args_to_signature {
+    my ($self, $c, $match_args) = @_;
+    my @incoming_args = @{ $c->req->args };
+    my $splitter = qr/,(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))/;
+    my @parsed_match_args = map {qr/$_/} split($splitter, $match_args);
+    foreach my $arg (@incoming_args) {
+        my $match_arg = shift(@parsed_match_args);
+        if($arg =~ $match_arg) {
+            next;
+        } else {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 sub compare {
     my ($a1, $a2) = @_;
 
@@ -124,6 +150,11 @@ context and arguments
 
 Check Args attribute, and makes sure number of args matches the setting.
 Always returns true if Args is omitted.
+
+=head2 match_captures( $c )
+
+Check MatchArgs attribute, and makes the incoming args match the given 
+signature.
 
 =head2 compare
 

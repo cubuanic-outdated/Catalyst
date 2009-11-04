@@ -80,6 +80,7 @@ sub match {
 
     foreach my $action ( @actions ) {
         next unless $action->match($c);
+        next unless $action->match_captures($c);
         $c->req->action($path);
         $c->req->match($path);
         $c->action($action);

@@ -233,7 +233,8 @@ sub recurse_match {
             else {
                 {
                     local $c->req->{arguments} = [ @{$c->req->args}, @parts ];
-                    next TRY_ACTION unless $action->match($c);
+                    next TRY_ACTION
+                      unless ($action->match($c) && $action->match_captures($c));
                 }
                 my $args_attr = $action->attributes->{Args}->[0];
 

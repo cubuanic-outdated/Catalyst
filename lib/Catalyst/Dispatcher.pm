@@ -359,37 +359,62 @@ Find an dispatch type that matches $c->req->path, and set args from it.
 sub prepare_action {
     my ( $self, $c ) = @_;
     my $req = $c->req;
-    my $path = $req->path;
-    my @path = split /\//, $req->path;
-    $req->args( \my @args );
+    my @path = $self->decompose_path_for_prepare_action($c, $req->path);
+    my $args = $self->dispatch_against_paths($c, \@path);
+    $req->args(@$args);
 
-    unshift( @path, '' );    # Root action
-
-  DESCEND: while (@path) {
-        $path = join '/', @path;
-        $path =~ s#^/+##;
-
-        # Check out dispatch types to see if any will handle the path at
-        # this level
-
-        foreach my $type ( @{ $self->dispatch_types } ) {
-            last DESCEND if $type->match( $c, $path );
-        }
-
-        # If not, move the last part path to args
-        my $arg = pop(@path);
-        $arg =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg;
-        unshift @args, $arg;
-    }
-
-    s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg for grep { defined } @{$req->captures||[]};
+    s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg
+      for grep { defined } @{$req->captures||[]};
 
     $c->log->debug( 'Path is "' . $req->match . '"' )
       if ( $c->debug && defined $req->match && length $req->match );
 
-    $c->log->debug( 'Arguments are "' . join( '/', @args ) . '"' )
-      if ( $c->debug && @args );
+    $c->log->debug( 'Arguments are "' . join( '/', @$args ) . '"' )
+      if ( $c->debug && @$args );
 }
+
+sub dispatch_against_paths {
+    my ($self, $c, $paths, $args) = (@_, []);
+    my $path = join '/', @$paths;
+    $path =~ s#^/+##;
+    if($self->match_dispatch_types_to_path($c, $path, @{ $self->_dispatch_types })) {
+        return $args; ## all done
+    } else {
+        # If not, move the last part path to args
+        my $arg = pop(@$paths);
+        $arg =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg;
+        unshift @$args, $arg;
+        if(@$paths) {
+            return $self->dispatch_against_paths($c, $paths, $args);
+        } else {
+            return $args;
+        }
+    }
+}
+
+sub match_dispatch_types_to_path {
+    my ($self, $c, $path, $dispatch_type, @dispatch_types) = @_;
+    if(my $match = $self->match_dispatch_type_to_path($c, $path, $dispatch_type)) {
+        return $match;
+    } elsif(@dispatch_types) {
+        return $self->match_dispatch_types_to_path($c, $path, @dispatch_types);
+    } else {
+        return;
+    }
+}
+
+sub match_dispatch_type_to_path {
+    my ($self, $c, $path, $dispatch_type) = @_;
+    return $dispatch_type->match($c, $path);
+}
+	
+sub decompose_path_for_prepare_action {
+    my ($self, $c, $path) = @_;
+    my @path = (split(/\//, $path));
+    unshift( @path, '' ); ## Root action
+    return @path;
+}
+
 
 =head2 $self->get_action( $action, $namespace )
 

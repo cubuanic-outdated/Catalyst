@@ -79,6 +79,7 @@ sub match {
 sub match_captures {
     my ($self, $c) = @_;
     if(my $match_args = $self->attributes->{MatchArgs}) {
+    	$match_args = join(',', @$match_args); ## incase you have multiple
         return $self->_compare_args_to_signature($c, $match_args)
     } else {
         return 1; ## if no MatchArgs, assume all is well
@@ -90,10 +91,13 @@ sub _compare_args_to_signature {
     my ($self, $c, $match_args) = @_;
     my @incoming_args = @{ $c->req->args };
     my $splitter = qr/,(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))/;
-    my @parsed_match_args = map {qr/$_/} split($splitter, $match_args);
+    my @parsed_match_args = split($splitter, $match_args);
     foreach my $arg (@incoming_args) {
         my $match_arg = shift(@parsed_match_args);
-        if($arg =~ $match_arg) {
+        $match_arg =~s/^"//;
+        $match_arg =~s/"$//;        
+        $match_arg = qr[$match_arg];
+        if($arg =~ m/^$match_arg$/x) {
             next;
         } else {
             return 0;

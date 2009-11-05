@@ -29,6 +29,7 @@ sub prepare_action {
     my $c = shift;
     $c->next::method(@_);
     $c->res->header( 'X-Catalyst-Action' => $c->req->action );
+    $c->res->header( 'X-Catalyst-Action-Private' => $c->action );
 }
 
 1;

@@ -79,7 +79,7 @@ sub match {
     my @actions = @{ $self->_paths->{$path} || [] };
 
     foreach my $action ( @actions ) {
-        next unless ($action->match($c) && $action->match_captures($c));
+        next unless ($action->match($c));
         $c->req->action($path);
         $c->req->match($path);
         $c->action($action);

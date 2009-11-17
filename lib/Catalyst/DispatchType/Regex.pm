@@ -79,7 +79,8 @@ sub match {
 
     foreach my $compiled ( @{ $self->_compiled } ) {
         if ( my @captures = ( $path =~ $compiled->{re} ) ) {
-            next unless $compiled->{action}->match($c);
+            my $action = $compiled->{action};
+            next unless ($action->match($c) && $action->match_captures($c));
             $c->req->action( $compiled->{path} );
             $c->req->match($path);
             $c->req->captures( \@captures );

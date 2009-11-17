@@ -1,14 +1,31 @@
 package TestApp::Controller::Action::PathMatchArgs;
 
 use strict;
+use warnings;
+
 use base 'TestApp::Controller::Action';
 
 __PACKAGE__->config(
     actions => {
-      'one' => { 'Path' => 'one', 'Args' => '1', 'MatchArgs' => '\d' },
-      'two' => { 'Path' => 'one', 'Args' => '1', 'MatchArgs' => '\d\d' },
-      'three' => { 'Path' => 'one', 'Args' => '1', 'MatchArgs' => '\d\d\d' },   
-    },
+		'one' => {
+			'Path' => 'one', 
+			'Args' => '1', 
+			'ActionClass' => '+TestApp::Action::MatchArgsRegexp',
+			'MatchArgsRegexp' => '\d',
+		},
+		'two' => {
+			'Path' => 'one', 
+			'Args' => '1', 
+			'ActionClass' => '+TestApp::Action::MatchArgsRegexp',
+			'MatchArgsRegexp' => '\d\d',
+		},
+		'three' => {
+			'Path' => 'one', 
+			'Args' => '1', 
+			'ActionClass' => '+TestApp::Action::MatchArgsRegexp',
+			'MatchArgsRegexp' => '\d\d\d',
+		},   
+	},
 );
 
 sub one : Action {

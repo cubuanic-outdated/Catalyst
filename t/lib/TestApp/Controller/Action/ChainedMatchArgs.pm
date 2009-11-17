@@ -20,36 +20,40 @@ sub foo
 }
 
 sub endpoint1
+	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
     :PathPart('end') 
     :Chained('foo')
-    :MatchArgs('\d')
+    :MatchCapturesRegexp('\d')
     :Args(1) {
     	my ($self, $c, @args) = @_;
         $c->forward('TestApp::View::Dump::Request');    
     }
 
 sub endpoint2
+	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
     :PathPart('end') 
     :Chained('foo')
-    :MatchArgs('\d\d')
+    :MatchCapturesRegexp('\d\d')
     :Args(1) {
     	my ($self, $c, @args) = @_;
         $c->forward('TestApp::View::Dump::Request');    
     }
 
 sub endpoint3
+	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
     :PathPart('end') 
     :Chained('foo')
-    :MatchArgs('\d,"\d\d"')
+    :MatchCapturesRegexp('\d,"\d\d"')
     :Args(2) {
     	my ($self, $c, @args) = @_;
         $c->forward('TestApp::View::Dump::Request');    
     }
 
 sub endpoint4
+	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
     :PathPart('end') 
     :Chained('foo')
-    :MatchArgs('\d\d,\d')
+    :MatchCapturesRegexp('\d\d,\d')
     :Args(2) {
     	my ($self, $c, @args) = @_;
         $c->forward('TestApp::View::Dump::Request');    

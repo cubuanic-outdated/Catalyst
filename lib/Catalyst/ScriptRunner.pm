@@ -14,8 +14,7 @@ sub find_script_class {
         Class::MOP::load_class($class);
     }
     catch {
-        warn("Could not load $class - falling back to Catalyst::Script::$script : $_\n")
-            if $_ !~ /Can't locate/;
+        confess $_ unless /Can't locate/;
         $class = "Catalyst::Script::$script";
     };
 

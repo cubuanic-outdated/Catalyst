@@ -1067,13 +1067,15 @@ sub run_tests {
     # Test round tripping, specifically the / character %2F in uri_for:
     # not being able to feed it back action + captureargs and args into uri for
     # and result in the original request uri is a major piece of suck ;)
+    # Note - for extra fun, in path parts, / must be double encoded to
+    #        %252F, see notes re the RFC in Engine::CGI
     foreach my $thing (
         ['foo', 'bar'],
-        ['foo%2Fbar', 'baz'],
-        ['foo', 'bar%2Fbaz'],
-        ['foo%2Fbar', 'baz%2Fquux'],
-        ['foo%2Fbar', 'baz%2Fquux', { foo => 'bar', 'baz' => 'quux%2Ffrood'}],
-        ['foo%2Fbar', 'baz%2Fquux', { foo => 'bar', 'baz%2Ffnoo' => 'quux%2Ffrood'}],
+        ['foo%252Fbar', 'baz'],
+        ['foo', 'bar%252Fbaz'],
+        ['foo%252Fbar', 'baz%252Fquux'],
+        ['foo%252Fbar', 'baz%252Fquux', { foo => 'bar', 'baz' => 'quux%2Ffrood'}],
+        ['foo%252Fbar', 'baz%252Fquux', { foo => 'bar', 'baz%2Ffnoo' => 'quux%2Ffrood'}],
     ) {
         my $path = '/chained/roundtrip_urifor/' .
             $thing->[0] . '/' . $thing->[1];
@@ -1085,7 +1087,8 @@ sub run_tests {
             'request ' . $path . ' ok');
         # Just check that the path matches, as who the hell knows or cares
         # where the app is based (live tests etc)
-        ok( index($content, $path) > 1, 'uri can round trip through uri_for' );
+        ok( index($content, $path) > 1, 'uri can round trip through uri_for' )
+            or warn("Got back '$content', sent '$path'");
     }
 }
 

@@ -1,5 +1,12 @@
 package Catalyst::Engine::HTTP;
 
+# this horrible hack for the HTTP engine is for testing with ipv6
+# usage :./script/APP_server.pl --host=2001:5c0:1401:a::2ed 
+# where 2001:5c0:1401:a::2ed  is your ipv6 address
+# did not test with anything else
+# (phurl) James Michael DuPont  <JamesMikeDuPont@googlemail.com>
+# Friday Feb 12 2010
+
 use Moose;
 extends 'Catalyst::Engine::CGI';
 
@@ -8,10 +15,12 @@ use Errno 'EWOULDBLOCK';
 use HTTP::Date ();
 use HTTP::Headers;
 use HTTP::Status;
-use Socket;
-use IO::Socket::INET ();
+#use Socket; removed for now
+use Socket6;
+#use IO::Socket::INET (); removed for now
+use IO::Socket::INET6;
 use IO::Select       ();
-
+use Net::INET6Glue;
 use constant CHUNKSIZE => 64 * 1024;
 use constant DEBUG     => $ENV{CATALYST_HTTP_DEBUG} || 0;
 
@@ -20,6 +29,8 @@ use namespace::clean -except => 'meta';
 has options => ( is => 'rw' );
 has _keepalive => ( is => 'rw', predicate => '_is_keepalive', clearer => '_clear_keepalive' );
 has _write_error => ( is => 'rw', predicate => '_has_write_error' );
+# inet_ntoa   inet_aton
+##inet_ntop   inet_pton
 
 # Refactoring note - could/should Eliminate all instances of $self->{inputbuf},
 # which I haven't touched as it is used as an lvalue in a lot of places, and I guess
@@ -196,21 +207,22 @@ sub run {
     local $SIG{CHLD} = 'IGNORE';
 
     my $allowed = $options->{allowed} || { '127.0.0.1' => '255.255.255.255' };
-    my $addr = $host ? inet_aton($host) : INADDR_ANY;
+    warn "Checking host $host";
+    my $addr = $host ; # ? inet_pton(AF_INET6,$host) : INADDR_ANY;
     if ( $addr eq INADDR_ANY ) {
         require Sys::Hostname;
         $host = lc Sys::Hostname::hostname();
     }
     else {
-        $host = gethostbyaddr( $addr, AF_INET ) || inet_ntoa($addr);
+        #$host = gethostbyaddr( $addr, AF_INET ) || inet_ntop(AF_INET6,$addr);
     }
 
     # Handle requests
-
+    warn "going to start on $addr and $port";
     # Setup socket
-    my $daemon = IO::Socket::INET->new(
+    my $daemon = IO::Socket::INET6->new(
         Listen    => SOMAXCONN,
-        LocalAddr => inet_ntoa($addr),
+        LocalAddr => $addr,
         LocalPort => $port,
         Proto     => 'tcp',
         ReuseAddr => 1,
@@ -220,7 +232,7 @@ sub run {
 
     $port = $daemon->sockport();
 
-    my $url = "http://$host";
+    my $url = "http://[$host]";
     $url .= ":$port" unless $port == 80;
 
     print "You can connect to your server at $url\n";
@@ -339,7 +351,7 @@ sub run {
         use Config;
         $ENV{PERL5LIB} .= join $Config{path_sep}, @INC;
 
-        exec $^X, $0, @{ $options->{argv} || [] };
+        exec $^X, $0, @{ $options->{argv} };
     }
 
     exit;
@@ -523,25 +535,28 @@ sub _socket_data {
 
     my $remote_sockaddr       = getpeername($handle);
     my ( undef, $iaddr )      = $remote_sockaddr
-        ? sockaddr_in($remote_sockaddr)
+        ? unpack_sockaddr_in6($remote_sockaddr) #sockaddr_in
         : (undef, undef);
 
     my $local_sockaddr        = getsockname($handle);
-    my ( undef, $localiaddr ) = sockaddr_in($local_sockaddr);
+    my ( undef, $localiaddr ) = unpack_sockaddr_in6($local_sockaddr);
 
     # This mess is necessary to keep IE from crashing the server
     my $data = {
         peeraddr  => $iaddr
-            ? ( inet_ntoa($iaddr) || '127.0.0.1' )
+            ? ( inet_ntop(AF_INET6,$iaddr) || '127.0.0.1' )
             : '127.0.0.1',
         localname => gethostbyaddr( $localiaddr, AF_INET ) || 'localhost',
-        localaddr => inet_ntoa($localiaddr) || '127.0.0.1',
+        localaddr => inet_ntop(AF_INET6,$localiaddr) || '127.0.0.1',
     };
 
     return $data;
 }
 
-sub _inet_addr { unpack "N*", inet_aton( $_[0] ) }
+sub _inet_addr { 
+    warn "check $_[0]";
+    unpack "N*", inet_pton(AF_INET6, $_[0] ) ;
+}
 
 =head2 options
 

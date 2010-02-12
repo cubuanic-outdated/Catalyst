@@ -2992,6 +2992,8 @@ Oleg Kostyuk <cub.uanic@gmail.com>
 
 phaylon: Robert Sedlacek <phaylon@dunkelheit.at>
 
+phurl: James Michael DuPont <JamesMikeDuPont@googlemail.com>
+
 rafl: Florian Ragwitz <rafl@debian.org>
 
 random: Roland Lammel <lammel@cpan.org>

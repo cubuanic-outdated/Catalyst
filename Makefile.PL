@@ -52,6 +52,10 @@ requires 'MooseX::Types';
 requires 'MooseX::Types::Common::Numeric';
 requires 'String::RewritePrefix' => '0.004'; # Catalyst::Utils::resolve_namespace
 
+# for ipv6
+requires 'Socket6';
+requires 'IO::Socket::INET6';
+
 test_requires 'Class::Data::Inheritable';
 test_requires 'Test::Exception';
 test_requires 'Test::More' => '0.88';

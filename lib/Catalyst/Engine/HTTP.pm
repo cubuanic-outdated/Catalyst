@@ -20,7 +20,7 @@ use Socket6;
 #use IO::Socket::INET (); removed for now
 use IO::Socket::INET6;
 use IO::Select       ();
-use Net::INET6Glue;
+#use Net::INET6Glue;
 use constant CHUNKSIZE => 64 * 1024;
 use constant DEBUG     => $ENV{CATALYST_HTTP_DEBUG} || 0;
 

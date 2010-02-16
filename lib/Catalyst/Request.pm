@@ -110,7 +110,7 @@ has _body => (
 sub body {
   my $self = shift;
   $self->_context->prepare_body();
-  $self->_body(@_) if scalar @_;
+  croak 'body is a reader' if scalar @_;
   return blessed $self->_body ? $self->_body->body : $self->_body;
 }
 
@@ -210,7 +210,7 @@ Returns a reference to an array containing the arguments.
 
 For example, if your action was
 
-    package MyApp::C::Foo;
+    package MyApp::Controller::Foo;
 
     sub moose : Local {
         ...
@@ -570,7 +570,7 @@ L<Catalyst::Request::Upload> objects.
 
 =head2 $req->uri
 
-Returns a URI object for the current request. Stringifies to the URI text.
+Returns a L<URI> object for the current request. Stringifies to the URI text.
 
 =head2 $req->mangle_params( { key => 'value' }, $appendmode);
 
@@ -672,11 +672,6 @@ sub uri_with {
 
     return $uri;
 }
-
-=head2 $req->user
-
-Returns the currently logged in user. B<Highly deprecated>, do not call,
-this will be removed in version 5.81.
 
 =head2 $req->remote_user
 

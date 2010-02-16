@@ -4,7 +4,6 @@ use Moose;
 use Moose::Meta::Class ();
 extends 'Catalyst::Component';
 use Moose::Util qw/find_meta/;
-use bytes;
 use B::Hooks::EndOfScope ();
 use Catalyst::Exception;
 use Catalyst::Exception::Detach;
@@ -79,12 +78,8 @@ __PACKAGE__->stats_class('Catalyst::Stats');
 
 # Remember to update this in Catalyst::Runtime as well!
 
-our $VERSION = '5.80012';
-
-{
-    my $dev_version = $VERSION =~ /_\d{2}$/;
-    *_IS_DEVELOPMENT_VERSION = sub () { $dev_version };
-}
+our $VERSION = '5.80020';
+our $PRETTY_VERSION = $VERSION;
 
 $VERSION = eval $VERSION;
 
@@ -97,11 +92,6 @@ sub import {
 
     my $caller = caller();
     return if $caller eq 'main';
-
-    # Kill Adopt::NEXT warnings if we're a non-RC version
-    unless (_IS_DEVELOPMENT_VERSION()) {
-        Class::C3::Adopt::NEXT->unimport(qr/^Catalyst::/);
-    }
 
     my $meta = Moose::Meta::Class->initialize($caller);
     unless ( $caller->isa('Catalyst') ) {
@@ -255,6 +245,9 @@ environment with CATALYST_DEBUG or <MYAPP>_DEBUG. The environment
 settings override the application, with <MYAPP>_DEBUG having the highest
 priority.
 
+This sets the log level to 'debug' and enables full debug output on the
+error screen. If you only want the latter, see L<< $c->debug >>.
+
 =head2 -Engine
 
 Forces Catalyst to use a specific engine. Omit the
@@ -273,6 +266,14 @@ C<CATALYST_HOME> environment variable or C<MYAPP_HOME>; where C<MYAPP>
 is replaced with the uppercased name of your application, any "::" in
 the name will be replaced with underscores, e.g. MyApp::Web should use
 MYAPP_WEB_HOME. If both variables are set, the MYAPP_HOME one will be used.
+
+If none of these are set, Catalyst will attempt to automatically detect the
+home directory. If you are working in a development envirnoment, Catalyst
+will try and find the directory containing either Makefile.PL, Build.PL or
+dist.ini. If the application has been installed into the system (i.e.
+you have done C<make install>), then Catalyst will use the path to your
+application module, without the .pm extension (ie, /foo/MyApp if your
+application was installed at /foo/MyApp.pm)
 
 =head2 -Log
 
@@ -333,8 +334,8 @@ call to forward.
 
     my $foodata = $c->forward('/foo');
     $c->forward('index');
-    $c->forward(qw/MyApp::Model::DBIC::Foo do_stuff/);
-    $c->forward('MyApp::View::TT');
+    $c->forward(qw/Model::DBIC::Foo do_stuff/);
+    $c->forward('View::TT');
 
 Note that L<< forward|/"$c->forward( $action [, \@arguments ] )" >> implies
 an C<< eval { } >> around the call (actually
@@ -343,12 +344,27 @@ all 'dies' within the called action. If you want C<die> to propagate you
 need to do something like:
 
     $c->forward('foo');
-    die $c->error if $c->error;
+    die join "\n", @{ $c->error } if @{ $c->error };
 
 Or make sure to always return true values from your actions and write
 your code like this:
 
     $c->forward('foo') || return;
+
+Another note is that C<< $c->forward >> always returns a scalar because it
+actually returns $c->state which operates in a scalar context.
+Thus, something like:
+
+    return @array;
+
+in an action that is forwarded to is going to return a scalar,
+i.e. how many items are in that array, which is probably not what you want.
+If you need to return an array then return a reference to it,
+or stash it like so:
+
+    $c->stash->{array} = \@array;
+
+and access it from the stash.
 
 =cut
 
@@ -403,12 +419,15 @@ sub visit { my $c = shift; $c->dispatcher->visit( $c, @_ ) }
 
 =head2 $c->go( $class, $method, [, \@captures, \@arguments ] )
 
-Almost the same as L<< detach|/"$c->detach( $action [, \@arguments ] )" >>, but does a full dispatch like L</visit>,
-instead of just calling the new C<$action> /
-C<< $class->$method >>. This means that C<begin>, C<auto> and the
-method you visit are called, just like a new request.
-
-C<< $c->stash >> is kept unchanged.
+The relationship between C<go> and
+L<< visit|/"$c->visit( $action [, \@captures, \@arguments ] )" >> is the same as
+the relationship between
+L<< forward|/"$c->forward( $class, $method, [, \@arguments ] )" >> and
+L<< detach|/"$c->detach( $action [, \@arguments ] )" >>. Like C<< $c->visit >>,
+C<< $c->go >> will perform a full dispatch on the specified action or method,
+with localized C<< $c->action >> and C<< $c->namespace >>. Like C<detach>,
+C<go> escapes the processing of the current request chain on completion, and
+does not return to its caller.
 
 =cut
 
@@ -488,6 +507,8 @@ sub error {
 =head2 $c->state
 
 Contains the return value of the last executed action.
+Note that << $c->state >> operates in a scalar context which means that all
+values it returns are scalar.
 
 =head2 $c->clear_errors
 
@@ -532,6 +553,10 @@ sub _comp_names_search_prefixes {
     # if we were given a regexp to search against, we're done.
     return if ref $name;
 
+    # skip regexp fallback if configured
+    return
+        if $appclass->config->{disable_component_resolution_regex_fallback};
+
     # regexp fallback
     $query  = qr/$name/i;
     @result = grep { $eligible{ $_ } =~ m{$query} } keys %eligible;
@@ -549,7 +574,8 @@ sub _comp_names_search_prefixes {
            (join '", "', @result) . "'. Relying on regexp fallback behavior for " .
            "component resolution is unreliable and unsafe.";
         my $short = $result[0];
-        $short =~ s/.*?Model:://;
+        # remove the component namespace prefix
+        $short =~ s/.*?(Model|Controller|View):://;
         my $shortmess = Carp::shortmess('');
         if ($shortmess =~ m#Catalyst/Plugin#) {
            $msg .= " You probably need to set '$short' instead of '${name}' in this " .
@@ -558,7 +584,7 @@ sub _comp_names_search_prefixes {
            $msg .= " You probably need to set '$short' instead of '${name}' in this " .
               "component's config";
         } else {
-           $msg .= " You probably meant \$c->${warn_for}('$short') instead of \$c->${warn_for}({'${name}'}), " .
+           $msg .= " You probably meant \$c->${warn_for}('$short') instead of \$c->${warn_for}('${name}'), " .
               "but if you really wanted to search, pass in a regexp as the argument " .
               "like so: \$c->${warn_for}(qr/${name}/)";
         }
@@ -775,6 +801,12 @@ should be used instead.
 If C<$name> is a regexp, a list of components matched against the full
 component name will be returned.
 
+If Catalyst can't find a component by name, it will fallback to regex
+matching by default. To disable this behaviour set
+disable_component_resolution_regex_fallback to a true value.
+
+    __PACKAGE__->config( disable_component_resolution_regex_fallback => 1 );
+
 =cut
 
 sub component {
@@ -903,6 +935,8 @@ You can enable debug mode in several ways:
 =item By declaring C<sub debug { 1 }> in your MyApp.pm.
 
 =back
+
+The first three also set the log level to 'debug'.
 
 Calling C<< $c->debug(1) >> has no effect.
 
@@ -1112,9 +1146,8 @@ EOF
 
     if ( $class->debug ) {
         my $name = $class->config->{name} || 'Application';
-        $class->log->info("$name powered by Catalyst $Catalyst::VERSION");
+        $class->log->info("$name powered by Catalyst $Catalyst::PRETTY_VERSION");
     }
-    $class->log->_flush() if $class->log->can('_flush');
 
     # Make sure that the application class becomes immutable at this point,
     B::Hooks::EndOfScope::on_scope_end {
@@ -1136,30 +1169,35 @@ EOF
         }
         $meta->make_immutable(
             replace_constructor => 1,
-            allow_mutable_ancestors => 1,
         ) unless $meta->is_immutable;
     };
 
-    $class->setup_finalize;
-}
+    if ($class->config->{case_sensitive}) {
+        $class->log->warn($class . "->config->{case_sensitive} is set.");
+        $class->log->warn("This setting is deprecated and planned to be removed in Catalyst 5.81.");
+    }
 
+    $class->setup_finalize;
+    # Should be the last thing we do so that user things hooking
+    # setup_finalize can log..
+    $class->log->_flush() if $class->log->can('_flush');
+    return 1; # Explicit return true as people have __PACKAGE__->setup as the last thing in their class. HATE.
+}
 
 =head2 $app->setup_finalize
 
-A hook to attach modifiers to.
-Using C<< after setup => sub{}; >> doesn't work, because of quirky things done for plugin setup.
-Also better than C< setup_finished(); >, as that is a getter method.
+A hook to attach modifiers to. This method does not do anything except set the
+C<setup_finished> accessor.
 
-    sub setup_finalize {
+Applying method modifiers to the C<setup> method doesn't work, because of quirky thingsdone for plugin setup.
 
+Example:
+
+    after setup_finalize => sub {
         my $app = shift;
 
-        ## do stuff, i.e., determine a primary key column for sessions stored in a DB
-
-        $app->next::method(@_);
-
-
-    }
+        ## do stuff here..
+    };
 
 =cut
 
@@ -1168,13 +1206,17 @@ sub setup_finalize {
     $class->setup_finished(1);
 }
 
-=head2 $c->uri_for( $path, @args?, \%query_values? )
+=head2 $c->uri_for( $path?, @args?, \%query_values? )
 
 =head2 $c->uri_for( $action, \@captures?, @args?, \%query_values? )
 
 Constructs an absolute L<URI> object based on the application root, the
 provided path, and the additional arguments and query parameters provided.
 When used as a string, provides a textual URI.
+
+If no arguments are provided, the URI for the current action is returned.
+To return the current action and also provide @args, use
+C<< $c->uri_for( $c->action, @args ) >>.
 
 If the first argument is a string, it is taken as a public URI path relative
 to C<< $c->namespace >> (if it doesn't begin with a forward slash) or
@@ -1216,10 +1258,31 @@ sub uri_for {
         $path .= '/';
     }
 
+    undef($path) if (defined $path && $path eq '');
+
+    my $params =
+      ( scalar @args && ref $args[$#args] eq 'HASH' ? pop @args : {} );
+
+    carp "uri_for called with undef argument" if grep { ! defined $_ } @args;
+    foreach my $arg (@args) {
+        utf8::encode($arg) if utf8::is_utf8($arg);
+    }
+    s/([^$URI::uric])/$URI::Escape::escapes{$1}/go for @args;
+    if (blessed $path) { # Action object only.
+        s|/|%2F|g for @args;
+    }
+
     if ( blessed($path) ) { # action object
-        my $captures = ( scalar @args && ref $args[0] eq 'ARRAY'
-                         ? shift(@args)
-                         : [] );
+        my $captures = [ map { s|/|%2F|g; $_; }
+                        ( scalar @args && ref $args[0] eq 'ARRAY'
+                         ? @{ shift(@args) }
+                         : ()) ];
+
+        foreach my $capture (@$captures) {
+            utf8::encode($capture) if utf8::is_utf8($capture);
+            $capture =~ s/([^$URI::uric])/$URI::Escape::escapes{$1}/go;
+        }
+
         my $action = $path;
         $path = $c->dispatcher->uri_for_action($action, $captures);
         if (not defined $path) {
@@ -1231,12 +1294,6 @@ sub uri_for {
     }
 
     undef($path) if (defined $path && $path eq '');
-
-    my $params =
-      ( scalar @args && ref $args[$#args] eq 'HASH' ? pop @args : {} );
-
-    carp "uri_for called with undef argument" if grep { ! defined $_ } @args;
-    s/([^$URI::uric])/$URI::Escape::escapes{$1}/go for @args;
 
     unshift(@args, $path);
 
@@ -1296,6 +1353,20 @@ $c->uri_for >>.
 
 You can also pass in a Catalyst::Action object, in which case it is passed to
 C<< $c->uri_for >>.
+
+Note that although the path looks like a URI that dispatches to the wanted action, it is not a URI, but an internal path to that action.
+
+For example, if the action looks like:
+
+ package MyApp::Controller::Users;
+
+ sub lst : Path('the-list') {}
+
+You can use:
+
+ $c->uri_for_action('/users/lst')
+
+and it will create the URI /users/the-list.
 
 =back
 
@@ -1599,9 +1670,10 @@ sub _stats_start_execute {
 
     # is this a root-level call or a forwarded call?
     if ( $callsub =~ /forward$/ ) {
+        my $parent = $c->stack->[-1];
 
         # forward, locate the caller
-        if ( my $parent = $c->stack->[-1] ) {
+        if ( exists $c->counter->{"$parent"} ) {
             $c->stats->profile(
                 begin  => $action,
                 parent => "$parent" . $c->counter->{"$parent"},
@@ -1748,7 +1820,7 @@ sub finalize_headers {
         }
         else {
             # everything should be bytes at this point, but just in case
-            $response->content_length( bytes::length( $response->body ) );
+            $response->content_length( length( $response->body ) );
         }
     }
 
@@ -2177,8 +2249,11 @@ sub setup_components {
     }
 
     for my $component (@comps) {
-        $class->components->{ $component } = $class->setup_component($component);
-        for my $component ($class->expand_component_module( $component, $config )) {
+        my $instance = $class->components->{ $component } = $class->setup_component($component);
+        my @expanded_components = $instance->can('expand_modules')
+            ? $instance->expand_modules( $component, $config )
+            : $class->expand_component_module( $component, $config );
+        for my $component (@expanded_components) {
             next if $comps{$component};
             $class->_controller_init_base_classes($component); # Also cover inner packages
             $class->components->{ $component } = $class->setup_component($component);
@@ -2542,7 +2617,8 @@ the plugin name does not begin with C<Catalyst::Plugin::>.
         my $class = ref $proto || $proto;
 
         Class::MOP::load_class( $plugin );
-
+        $class->log->warn( "$plugin inherits from 'Catalyst::Component' - this is decated and will not work in 5.81" )
+            if $plugin->isa( 'Catalyst::Component' );
         $proto->_plugins->{$plugin} = 1;
         unless ($instant) {
             no strict 'refs';
@@ -2633,6 +2709,72 @@ messages in template systems.
 
 sub version { return $Catalyst::VERSION }
 
+=head1 CONFIGURATION
+
+There are a number of 'base' config variables which can be set:
+
+=over
+
+=item *
+
+C<default_model> - The default model picked if you say C<< $c->model >>. See L<< /$c->model($name) >>.
+
+=item *
+
+C<default_view> - The default view to be rendered or returned when C<< $c->view >> is called. See L<< /$c->view($name) >>.
+
+=item *
+
+C<disable_component_resolution_regex_fallback> - Turns
+off the deprecated component resolution functionality so
+that if any of the component methods (e.g. C<< $c->controller('Foo') >>)
+are called then regex search will not be attempted on string values and
+instead C<undef> will be returned.
+
+=item *
+
+C<home> - The application home directory. In an uninstalled application,
+this is the top level application directory. In an installed application,
+this will be the directory containing C<< MyApp.pm >>.
+
+=item *
+
+C<ignore_frontend_proxy> - See L</PROXY SUPPORT>
+
+=item *
+
+C<name> - The name of the application in debug messages and the debug and
+welcome screens
+
+=item *
+
+C<parse_on_demand> - The request body (for example file uploads) will not be parsed
+until it is accessed. This allows you to (for example) check authentication (and reject
+the upload) before actually recieving all the data. See L</ON-DEMAND PARSER>
+
+=item *
+
+C<root> - The root directory for templates. Usually this is just a
+subdirectory of the home directory, but you can set it to change the
+templates to a different directory.
+
+=item *
+
+C<search_extra> - Array reference passed to Module::Pluggable to for additional
+namespaces from which components will be loaded (and constructed and stored in
+C<< $c->components >>).
+
+=item *
+
+C<show_internal_actions> - If true, causes internal actions such as C<< _DISPATCH >>
+to be shown in hit debug tables in the test server.
+
+=item *
+
+C<using_frontend_proxy> - See L</PROXY SUPPORT>.
+
+=back
+
 =head1 INTERNAL ACTIONS
 
 Catalyst uses internal actions like C<_DISPATCH>, C<_BEGIN>, C<_AUTO>,
@@ -2640,16 +2782,6 @@ C<_ACTION>, and C<_END>. These are by default not shown in the private
 action table, but you can make them visible with a config parameter.
 
     MyApp->config(show_internal_actions => 1);
-
-=head1 CASE SENSITIVITY
-
-By default Catalyst is not case sensitive, so C<MyApp::C::FOO::Bar> is
-mapped to C</foo/bar>. You can activate case sensitivity with a config
-parameter.
-
-    MyApp->config(case_sensitive => 1);
-
-This causes C<MyApp::C::Foo::Bar> to map to C</Foo/Bar>.
 
 =head1 ON-DEMAND PARSER
 
@@ -2760,6 +2892,8 @@ abw: Andy Wardley
 
 acme: Leon Brocard <leon@astray.com>
 
+abraxxa: Alexander Hartmaier <abraxxa@cpan.org>
+
 Andrew Bramble
 
 Andrew Ford E<lt>A.Ford@ford-mason.co.ukE<gt>
@@ -2787,6 +2921,8 @@ David Kamholz E<lt>dkamholz@cpan.orgE<gt>
 David Naughton, C<naughton@umn.edu>
 
 David E. Wheeler
+
+dhoss: Devin Austin <dhoss@cpan.org>
 
 dkubb: Dan Kubb <dan.kubb-cpan@onautopilot.com>
 
@@ -2849,6 +2985,8 @@ nothingmuch: Yuval Kogman <nothingmuch@woobling.org>
 numa: Dan Sully <daniel@cpan.org>
 
 obra: Jesse Vincent
+
+Octavian Rasnita
 
 omega: Andreas Marienborg
 

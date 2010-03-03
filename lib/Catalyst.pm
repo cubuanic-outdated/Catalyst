@@ -79,6 +79,8 @@ __PACKAGE__->stats_class('Catalyst::Stats');
 # Remember to update this in Catalyst::Runtime as well!
 
 our $VERSION = '5.80020';
+our $PRETTY_VERSION = $VERSION;
+
 $VERSION = eval $VERSION;
 
 sub import {
@@ -1144,7 +1146,7 @@ EOF
 
     if ( $class->debug ) {
         my $name = $class->config->{name} || 'Application';
-        $class->log->info("$name powered by Catalyst $Catalyst::VERSION");
+        $class->log->info("$name powered by Catalyst $Catalyst::PRETTY_VERSION");
     }
 
     # Make sure that the application class becomes immutable at this point,
@@ -1182,23 +1184,20 @@ EOF
     return 1; # Explicit return true as people have __PACKAGE__->setup as the last thing in their class. HATE.
 }
 
-
 =head2 $app->setup_finalize
 
-A hook to attach modifiers to.
-Using C<< after setup => sub{}; >> doesn't work, because of quirky things done for plugin setup.
-Also better than C< setup_finished(); >, as that is a getter method.
+A hook to attach modifiers to. This method does not do anything except set the
+C<setup_finished> accessor.
 
-    sub setup_finalize {
+Applying method modifiers to the C<setup> method doesn't work, because of quirky thingsdone for plugin setup.
 
+Example:
+
+    after setup_finalize => sub {
         my $app = shift;
 
-        ## do stuff, i.e., determine a primary key column for sessions stored in a DB
-
-        $app->next::method(@_);
-
-
-    }
+        ## do stuff here..
+    };
 
 =cut
 
@@ -1327,6 +1326,7 @@ sub uri_for {
           (map {
               my $param = "$_";
               utf8::encode( $param ) if utf8::is_utf8($param);
+              # using the URI::Escape pattern here so utf8 chars survive
               $param =~ s/([^A-Za-z0-9\-_.!~*'() ])/$URI::Escape::escapes{$1}/go;
               $param =~ s/ /+/g;
               "${key}=$param"; } ( ref $val eq 'ARRAY' ? @$val : $val ));

@@ -1,15 +1,12 @@
 package Catalyst::Action::TestAfter;
 
-use strict;
-use warnings;
+use Moose;
 
-use base qw/Catalyst::Action/;
+extends 'Catalyst::Action';
 
-sub execute {
-    my $self = shift;
-    my ( $controller, $c ) = @_;
-    $self->next::method( @_ );
-    $c->res->header( 'X-Action-After', $c->stash->{after_message} );
-}
+after execute => sub {
+    my ($self, $controller, $ctx) = @_;
+    $ctx->res->header( 'X-Action-After', $ctx->stash->{after_message} );
+};
 
 1;

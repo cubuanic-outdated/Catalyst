@@ -298,6 +298,8 @@ sub create_action {
                     ? $args{attributes}{ActionClass}[0]
                     : $self->_action_class);
     Class::MOP::load_class($class);
+    Moose->init_meta( for_class => $class)
+        unless Class::MOP::does_metaclass_exist($class);
 
     my @roles = (
         (blessed $self ? $self->_action_roles : ()),

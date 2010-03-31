@@ -4,7 +4,6 @@ use Moose;
 use Moose::Meta::Class ();
 extends 'Catalyst::Component';
 use Moose::Util qw/find_meta/;
-use bytes;
 use B::Hooks::EndOfScope ();
 use Catalyst::Exception;
 use Catalyst::Exception::Detach;
@@ -79,14 +78,7 @@ __PACKAGE__->stats_class('Catalyst::Stats');
 
 # Remember to update this in Catalyst::Runtime as well!
 
-our $VERSION = '5.80013';
-
-{
-    my $dev_version = $VERSION =~ /_\d{2}$/;
-    *_IS_DEVELOPMENT_VERSION = sub () { $dev_version };
-}
-
-$VERSION = eval $VERSION;
+our $VERSION = '5.80022';
 
 sub import {
     my ( $class, @arguments ) = @_;
@@ -97,11 +89,6 @@ sub import {
 
     my $caller = caller();
     return if $caller eq 'main';
-
-    # Kill Adopt::NEXT warnings if we're a non-RC version
-    unless (_IS_DEVELOPMENT_VERSION()) {
-        Class::C3::Adopt::NEXT->unimport(qr/^Catalyst::/);
-    }
 
     my $meta = Moose::Meta::Class->initialize($caller);
     unless ( $caller->isa('Catalyst') ) {
@@ -255,6 +242,9 @@ environment with CATALYST_DEBUG or <MYAPP>_DEBUG. The environment
 settings override the application, with <MYAPP>_DEBUG having the highest
 priority.
 
+This sets the log level to 'debug' and enables full debug output on the
+error screen. If you only want the latter, see L<< $c->debug >>.
+
 =head2 -Engine
 
 Forces Catalyst to use a specific engine. Omit the
@@ -273,6 +263,14 @@ C<CATALYST_HOME> environment variable or C<MYAPP_HOME>; where C<MYAPP>
 is replaced with the uppercased name of your application, any "::" in
 the name will be replaced with underscores, e.g. MyApp::Web should use
 MYAPP_WEB_HOME. If both variables are set, the MYAPP_HOME one will be used.
+
+If none of these are set, Catalyst will attempt to automatically detect the
+home directory. If you are working in a development envirnoment, Catalyst
+will try and find the directory containing either Makefile.PL, Build.PL or
+dist.ini. If the application has been installed into the system (i.e.
+you have done C<make install>), then Catalyst will use the path to your
+application module, without the .pm extension (ie, /foo/MyApp if your
+application was installed at /foo/MyApp.pm)
 
 =head2 -Log
 
@@ -333,8 +331,8 @@ call to forward.
 
     my $foodata = $c->forward('/foo');
     $c->forward('index');
-    $c->forward(qw/MyApp::Model::DBIC::Foo do_stuff/);
-    $c->forward('MyApp::View::TT');
+    $c->forward(qw/Model::DBIC::Foo do_stuff/);
+    $c->forward('View::TT');
 
 Note that L<< forward|/"$c->forward( $action [, \@arguments ] )" >> implies
 an C<< eval { } >> around the call (actually
@@ -343,22 +341,22 @@ all 'dies' within the called action. If you want C<die> to propagate you
 need to do something like:
 
     $c->forward('foo');
-    die $c->error if $c->error;
+    die join "\n", @{ $c->error } if @{ $c->error };
 
 Or make sure to always return true values from your actions and write
 your code like this:
 
     $c->forward('foo') || return;
-    
+
 Another note is that C<< $c->forward >> always returns a scalar because it
 actually returns $c->state which operates in a scalar context.
 Thus, something like:
 
     return @array;
-    
-in an action that is forwarded to is going to return a scalar, 
+
+in an action that is forwarded to is going to return a scalar,
 i.e. how many items are in that array, which is probably not what you want.
-If you need to return an array then return a reference to it, 
+If you need to return an array then return a reference to it,
 or stash it like so:
 
     $c->stash->{array} = \@array;
@@ -418,9 +416,9 @@ sub visit { my $c = shift; $c->dispatcher->visit( $c, @_ ) }
 
 =head2 $c->go( $class, $method, [, \@captures, \@arguments ] )
 
-The relationship between C<go> and 
+The relationship between C<go> and
 L<< visit|/"$c->visit( $action [, \@captures, \@arguments ] )" >> is the same as
-the relationship between 
+the relationship between
 L<< forward|/"$c->forward( $class, $method, [, \@arguments ] )" >> and
 L<< detach|/"$c->detach( $action [, \@arguments ] )" >>. Like C<< $c->visit >>,
 C<< $c->go >> will perform a full dispatch on the specified action or method,
@@ -505,7 +503,7 @@ sub error {
 
 =head2 $c->state
 
-Contains the return value of the last executed action.   
+Contains the return value of the last executed action.
 Note that << $c->state >> operates in a scalar context which means that all
 values it returns are scalar.
 
@@ -639,7 +637,13 @@ If you want to search for controllers, pass in a regexp as the argument.
 sub controller {
     my ( $c, $name, @args ) = @_;
 
+    my $appclass = ref($c) || $c;
     if( $name ) {
+        unless ( ref($name) ) { # Direct component hash lookup to avoid costly regexps
+            my $comps = $c->components;
+            my $check = $appclass."::Controller::".$name;
+            return $c->_filter_component( $comps->{$check}, @args ) if exists $comps->{$check};
+        }
         my @result = $c->_comp_search_prefixes( $name, qw/Controller C/ );
         return map { $c->_filter_component( $_, @args ) } @result if ref $name;
         return $c->_filter_component( $result[ 0 ], @args );
@@ -673,6 +677,11 @@ sub model {
     my ( $c, $name, @args ) = @_;
     my $appclass = ref($c) || $c;
     if( $name ) {
+        unless ( ref($name) ) { # Direct component hash lookup to avoid costly regexps
+            my $comps = $c->components;
+            my $check = $appclass."::Model::".$name;
+            return $c->_filter_component( $comps->{$check}, @args ) if exists $comps->{$check};
+        }
         my @result = $c->_comp_search_prefixes( $name, qw/Model M/ );
         return map { $c->_filter_component( $_, @args ) } @result if ref $name;
         return $c->_filter_component( $result[ 0 ], @args );
@@ -727,6 +736,11 @@ sub view {
 
     my $appclass = ref($c) || $c;
     if( $name ) {
+        unless ( ref($name) ) { # Direct component hash lookup to avoid costly regexps
+            my $comps = $c->components;
+            my $check = $appclass."::View::".$name;
+            return $c->_filter_component( $comps->{$check}, @args ) if exists $comps->{$check};
+        }
         my @result = $c->_comp_search_prefixes( $name, qw/View V/ );
         return map { $c->_filter_component( $_, @args ) } @result if ref $name;
         return $c->_filter_component( $result[ 0 ], @args );
@@ -803,7 +817,7 @@ component name will be returned.
 If Catalyst can't find a component by name, it will fallback to regex
 matching by default. To disable this behaviour set
 disable_component_resolution_regex_fallback to a true value.
-    
+
     __PACKAGE__->config( disable_component_resolution_regex_fallback => 1 );
 
 =cut
@@ -934,6 +948,8 @@ You can enable debug mode in several ways:
 =item By declaring C<sub debug { 1 }> in your MyApp.pm.
 
 =back
+
+The first three also set the log level to 'debug'.
 
 Calling C<< $c->debug(1) >> has no effect.
 
@@ -1145,7 +1161,6 @@ EOF
         my $name = $class->config->{name} || 'Application';
         $class->log->info("$name powered by Catalyst $Catalyst::VERSION");
     }
-    $class->log->_flush() if $class->log->can('_flush');
 
     # Make sure that the application class becomes immutable at this point,
     B::Hooks::EndOfScope::on_scope_end {
@@ -1170,26 +1185,32 @@ EOF
         ) unless $meta->is_immutable;
     };
 
-    $class->setup_finalize;
-}
+    if ($class->config->{case_sensitive}) {
+        $class->log->warn($class . "->config->{case_sensitive} is set.");
+        $class->log->warn("This setting is deprecated and planned to be removed in Catalyst 5.81.");
+    }
 
+    $class->setup_finalize;
+    # Should be the last thing we do so that user things hooking
+    # setup_finalize can log..
+    $class->log->_flush() if $class->log->can('_flush');
+    return 1; # Explicit return true as people have __PACKAGE__->setup as the last thing in their class. HATE.
+}
 
 =head2 $app->setup_finalize
 
-A hook to attach modifiers to.
-Using C<< after setup => sub{}; >> doesn't work, because of quirky things done for plugin setup.
-Also better than C< setup_finished(); >, as that is a getter method.
+A hook to attach modifiers to. This method does not do anything except set the
+C<setup_finished> accessor.
 
-    sub setup_finalize {
+Applying method modifiers to the C<setup> method doesn't work, because of quirky thingsdone for plugin setup.
 
+Example:
+
+    after setup_finalize => sub {
         my $app = shift;
 
-        ## do stuff, i.e., determine a primary key column for sessions stored in a DB
-
-        $app->next::method(@_);
-
-
-    }
+        ## do stuff here..
+    };
 
 =cut
 
@@ -1198,13 +1219,17 @@ sub setup_finalize {
     $class->setup_finished(1);
 }
 
-=head2 $c->uri_for( $path, @args?, \%query_values? )
+=head2 $c->uri_for( $path?, @args?, \%query_values? )
 
 =head2 $c->uri_for( $action, \@captures?, @args?, \%query_values? )
 
 Constructs an absolute L<URI> object based on the application root, the
 provided path, and the additional arguments and query parameters provided.
 When used as a string, provides a textual URI.
+
+If no arguments are provided, the URI for the current action is returned.
+To return the current action and also provide @args, use
+C<< $c->uri_for( $c->action, @args ) >>.
 
 If the first argument is a string, it is taken as a public URI path relative
 to C<< $c->namespace >> (if it doesn't begin with a forward slash) or
@@ -1246,10 +1271,31 @@ sub uri_for {
         $path .= '/';
     }
 
+    undef($path) if (defined $path && $path eq '');
+
+    my $params =
+      ( scalar @args && ref $args[$#args] eq 'HASH' ? pop @args : {} );
+
+    carp "uri_for called with undef argument" if grep { ! defined $_ } @args;
+    foreach my $arg (@args) {
+        utf8::encode($arg) if utf8::is_utf8($arg);
+    }
+    s/([^$URI::uric])/$URI::Escape::escapes{$1}/go for @args;
+    if (blessed $path) { # Action object only.
+        s|/|%2F|g for @args;
+    }
+
     if ( blessed($path) ) { # action object
-        my $captures = ( scalar @args && ref $args[0] eq 'ARRAY'
-                         ? shift(@args)
-                         : [] );
+        my $captures = [ map { s|/|%2F|g; $_; }
+                        ( scalar @args && ref $args[0] eq 'ARRAY'
+                         ? @{ shift(@args) }
+                         : ()) ];
+
+        foreach my $capture (@$captures) {
+            utf8::encode($capture) if utf8::is_utf8($capture);
+            $capture =~ s/([^$URI::uric])/$URI::Escape::escapes{$1}/go;
+        }
+
         my $action = $path;
         $path = $c->dispatcher->uri_for_action($action, $captures);
         if (not defined $path) {
@@ -1261,12 +1307,6 @@ sub uri_for {
     }
 
     undef($path) if (defined $path && $path eq '');
-
-    my $params =
-      ( scalar @args && ref $args[$#args] eq 'HASH' ? pop @args : {} );
-
-    carp "uri_for called with undef argument" if grep { ! defined $_ } @args;
-    s/([^$URI::uric])/$URI::Escape::escapes{$1}/go for @args;
 
     unshift(@args, $path);
 
@@ -1326,6 +1366,20 @@ $c->uri_for >>.
 
 You can also pass in a Catalyst::Action object, in which case it is passed to
 C<< $c->uri_for >>.
+
+Note that although the path looks like a URI that dispatches to the wanted action, it is not a URI, but an internal path to that action.
+
+For example, if the action looks like:
+
+ package MyApp::Controller::Users;
+
+ sub lst : Path('the-list') {}
+
+You can use:
+
+ $c->uri_for_action('/users/lst')
+
+and it will create the URI /users/the-list.
 
 =back
 
@@ -1459,7 +1513,7 @@ sub welcome_message {
                     <a href="http://cpansearch.perl.org/search?query=Catalyst%3A%3AModel%3A%3A&amp;mode=all">models</a>, and
                     <a href="http://cpansearch.perl.org/search?query=Catalyst%3A%3AView%3A%3A&amp;mode=all">views</a>;
                     they can save you a lot of work.</p>
-                    <pre><code>script/${prefix}_create.pl -help</code></pre>
+                    <pre><code>script/${prefix}_create.pl --help</code></pre>
                     <p>Also, be sure to check out the vast and growing
                     collection of <a href="http://search.cpan.org/search?query=Catalyst">plugins for Catalyst on CPAN</a>;
                     you are likely to find what you need there.
@@ -1702,6 +1756,8 @@ sub finalize {
         $c->finalize_body;
     }
 
+    $c->log_response;
+
     if ($c->use_stats) {
         my $elapsed = sprintf '%f', $c->stats->elapsed;
         my $av = $elapsed == 0 ? '??' : sprintf '%.3f', 1 / $elapsed;
@@ -1779,7 +1835,7 @@ sub finalize_headers {
         }
         else {
             # everything should be bytes at this point, but just in case
-            $response->content_length( bytes::length( $response->body ) );
+            $response->content_length( length( $response->body ) );
         }
     }
 
@@ -1926,8 +1982,7 @@ sub prepare {
     $path       = '/' unless length $path;
     my $address = $c->req->address || '';
 
-    $c->log->debug(qq/"$method" request for "$path" from "$address"/)
-      if $c->debug;
+    $c->log_request;
 
     $c->prepare_action;
 
@@ -1957,17 +2012,6 @@ sub prepare_body {
     $c->engine->prepare_body( $c, @_ );
     $c->prepare_parameters;
     $c->prepare_uploads;
-
-    if ( $c->debug && keys %{ $c->req->body_parameters } ) {
-        my $t = Text::SimpleTable->new( [ 35, 'Parameter' ], [ 36, 'Value' ] );
-        for my $key ( sort keys %{ $c->req->body_parameters } ) {
-            my $param = $c->req->body_parameters->{$key};
-            my $value = defined($param) ? $param : '';
-            $t->row( $key,
-                ref $value eq 'ARRAY' ? ( join ', ', @$value ) : $value );
-        }
-        $c->log->debug( "Body Parameters are:\n" . $t->draw );
-    }
 }
 
 =head2 $c->prepare_body_chunk( $chunk )
@@ -2051,18 +2095,197 @@ sub prepare_query_parameters {
     my $c = shift;
 
     $c->engine->prepare_query_parameters( $c, @_ );
+}
 
-    if ( $c->debug && keys %{ $c->request->query_parameters } ) {
-        my $t = Text::SimpleTable->new( [ 35, 'Parameter' ], [ 36, 'Value' ] );
-        for my $key ( sort keys %{ $c->req->query_parameters } ) {
-            my $param = $c->req->query_parameters->{$key};
+=head2 $c->log_request
+
+Writes information about the request to the debug logs.  This includes:
+
+=over 4
+
+=item * Request method, path, and remote IP address
+
+=item * Query keywords (see L<Catalyst::Request/query_keywords>)
+
+=item * Request parameters
+
+=item * File uploads
+
+=back
+
+=cut
+
+sub log_request {
+    my $c = shift;
+
+    return unless $c->debug;
+
+    my($dump) = grep {$_->[0] eq 'Request' } $c->dump_these;
+    my $request = $dump->[1];
+
+    my ( $method, $path, $address ) = ( $request->method, $request->path, $request->address );
+    $method ||= '';
+    $path = '/' unless length $path;
+    $address ||= '';
+    $c->log->debug(qq/"$method" request for "$path" from "$address"/);
+
+    $c->log_request_headers($request->headers);
+
+    if ( my $keywords = $request->query_keywords ) {
+        $c->log->debug("Query keywords are: $keywords");
+    }
+
+    $c->log_request_parameters( query => $request->query_parameters, body => $request->body_parameters );
+
+    $c->log_request_uploads($request);
+}
+
+=head2 $c->log_response
+
+Writes information about the response to the debug logs by calling
+C<< $c->log_response_status_line >> and C<< $c->log_response_headers >>.
+
+=cut
+
+sub log_response {
+    my $c = shift;
+
+    return unless $c->debug;
+
+    my($dump) = grep {$_->[0] eq 'Response' } $c->dump_these;
+    my $response = $dump->[1];
+
+    $c->log_response_status_line($response);
+    $c->log_response_headers($response->headers);
+}
+
+=head2 $c->log_response_status_line($response)
+
+Writes one line of information about the response to the debug logs.  This includes:
+
+=over 4
+
+=item * Response status code
+
+=item * Content-Type header (if present)
+
+=item * Content-Length header (if present)
+
+=back
+
+=cut
+
+sub log_response_status_line {
+    my ($c, $response) = @_;
+
+    $c->log->debug(
+        sprintf(
+            'Response Code: %s; Content-Type: %s; Content-Length: %s',
+            $response->status                            || 'unknown',
+            $response->headers->header('Content-Type')   || 'unknown',
+            $response->headers->header('Content-Length') || 'unknown'
+        )
+    );
+}
+
+=head2 $c->log_response_headers($headers);
+
+Hook method which can be wrapped by plugins to log the responseheaders.
+No-op in the default implementation.
+
+=cut
+
+sub log_response_headers {}
+
+=head2 $c->log_request_parameters( query => {}, body => {} )
+
+Logs request parameters to debug logs
+
+=cut
+
+sub log_request_parameters {
+    my $c          = shift;
+    my %all_params = @_;
+
+    return unless $c->debug;
+
+    my $column_width = Catalyst::Utils::term_width() - 44;
+    foreach my $type (qw(query body)) {
+        my $params = $all_params{$type};
+        next if ! keys %$params;
+        my $t = Text::SimpleTable->new( [ 35, 'Parameter' ], [ $column_width, 'Value' ] );
+        for my $key ( sort keys %$params ) {
+            my $param = $params->{$key};
             my $value = defined($param) ? $param : '';
-            $t->row( $key,
-                ref $value eq 'ARRAY' ? ( join ', ', @$value ) : $value );
+            $t->row( $key, ref $value eq 'ARRAY' ? ( join ', ', @$value ) : $value );
         }
-        $c->log->debug( "Query Parameters are:\n" . $t->draw );
+        $c->log->debug( ucfirst($type) . " Parameters are:\n" . $t->draw );
     }
 }
+
+=head2 $c->log_request_uploads
+
+Logs file uploads included in the request to the debug logs.
+The parameter name, filename, file type, and file size are all included in
+the debug logs.
+
+=cut
+
+sub log_request_uploads {
+    my $c = shift;
+    my $request = shift;
+    return unless $c->debug;
+    my $uploads = $request->uploads;
+    if ( keys %$uploads ) {
+        my $t = Text::SimpleTable->new(
+            [ 12, 'Parameter' ],
+            [ 26, 'Filename' ],
+            [ 18, 'Type' ],
+            [ 9,  'Size' ]
+        );
+        for my $key ( sort keys %$uploads ) {
+            my $upload = $uploads->{$key};
+            for my $u ( ref $upload eq 'ARRAY' ? @{$upload} : ($upload) ) {
+                $t->row( $key, $u->filename, $u->type, $u->size );
+            }
+        }
+        $c->log->debug( "File Uploads are:\n" . $t->draw );
+    }
+}
+
+=head2 $c->log_request_headers($headers);
+
+Hook method which can be wrapped by plugins to log the request headers.
+No-op in the default implementation.
+
+=cut
+
+sub log_request_headers {}
+
+=head2 $c->log_headers($type => $headers)
+
+Logs L<HTTP::Headers> (either request or response) to the debug logs.
+
+=cut
+
+sub log_headers {
+    my $c       = shift;
+    my $type    = shift;
+    my $headers = shift;    # an HTTP::Headers instance
+
+    return unless $c->debug;
+
+    my $column_width = Catalyst::Utils::term_width() - 28;
+    my $t = Text::SimpleTable->new( [ 15, 'Header Name' ], [ $column_width, 'Value' ] );
+    $headers->scan(
+        sub {
+            my ( $name, $value ) = @_;
+            $t->row( $name, $value );
+        }
+    );
+    $c->log->debug( ucfirst($type) . " Headers:\n" . $t->draw );
+}
+
 
 =head2 $c->prepare_read
 
@@ -2090,22 +2313,6 @@ sub prepare_uploads {
     my $c = shift;
 
     $c->engine->prepare_uploads( $c, @_ );
-
-    if ( $c->debug && keys %{ $c->request->uploads } ) {
-        my $t = Text::SimpleTable->new(
-            [ 12, 'Parameter' ],
-            [ 26, 'Filename' ],
-            [ 18, 'Type' ],
-            [ 9,  'Size' ]
-        );
-        for my $key ( sort keys %{ $c->request->uploads } ) {
-            my $upload = $c->request->uploads->{$key};
-            for my $u ( ref $upload eq 'ARRAY' ? @{$upload} : ($upload) ) {
-                $t->row( $key, $u->filename, $u->type, $u->size );
-            }
-        }
-        $c->log->debug( "File Uploads are:\n" . $t->draw );
-    }
 }
 
 =head2 $c->prepare_write
@@ -2208,8 +2415,11 @@ sub setup_components {
     }
 
     for my $component (@comps) {
-        $class->components->{ $component } = $class->setup_component($component);
-        for my $component ($class->expand_component_module( $component, $config )) {
+        my $instance = $class->components->{ $component } = $class->setup_component($component);
+        my @expanded_components = $instance->can('expand_modules')
+            ? $instance->expand_modules( $component, $config )
+            : $class->expand_component_module( $component, $config );
+        for my $component (@expanded_components) {
             next if $comps{$component};
             $class->_controller_init_base_classes($component); # Also cover inner packages
             $class->components->{ $component } = $class->setup_component($component);
@@ -2573,16 +2783,12 @@ the plugin name does not begin with C<Catalyst::Plugin::>.
         my $class = ref $proto || $proto;
 
         Class::MOP::load_class( $plugin );
-
+        $class->log->warn( "$plugin inherits from 'Catalyst::Component' - this is decated and will not work in 5.81" )
+            if $plugin->isa( 'Catalyst::Component' );
         $proto->_plugins->{$plugin} = 1;
         unless ($instant) {
-            no strict 'refs';
-            if ( my $meta = Class::MOP::get_metaclass_by_name($class) ) {
-              my @superclasses = ($plugin, $meta->superclasses );
-              $meta->superclasses(@superclasses);
-            } else {
-              unshift @{"$class\::ISA"}, $plugin;
-            }
+            my $meta = Class::MOP::get_metaclass_by_name($class);
+            $meta->superclasses($plugin, $meta->superclasses);
         }
         return $class;
     }
@@ -2672,16 +2878,11 @@ There are a number of 'base' config variables which can be set:
 
 =item *
 
-C<case_sensitive> - Makes private paths case sensitive. See L</CASE SENSITIVITY>.
+C<default_model> - The default model picked if you say C<< $c->model >>. See L<< /$c->model($name) >>.
 
 =item *
 
-C<default_model> - The default model picked if you say C<< $c->model >>. See L</$c->model($name)>.
-
-=item *
-
-C<default_view> - The default view to be rendered or returned when C<< $c->view >>. See L</$c->view($name)>.
-is called.
+C<default_view> - The default view to be rendered or returned when C<< $c->view >> is called. See L<< /$c->view($name) >>.
 
 =item *
 
@@ -2742,16 +2943,6 @@ C<_ACTION>, and C<_END>. These are by default not shown in the private
 action table, but you can make them visible with a config parameter.
 
     MyApp->config(show_internal_actions => 1);
-
-=head1 CASE SENSITIVITY
-
-By default Catalyst is not case sensitive, so C<MyApp::C::FOO::Bar> is
-mapped to C</foo/bar>. You can activate case sensitivity with a config
-parameter.
-
-    MyApp->config(case_sensitive => 1);
-
-This causes C<MyApp::C::Foo::Bar> to map to C</Foo/Bar>.
 
 =head1 ON-DEMAND PARSER
 
@@ -2892,6 +3083,8 @@ David Naughton, C<naughton@umn.edu>
 
 David E. Wheeler
 
+dhoss: Devin Austin <dhoss@cpan.org>
+
 dkubb: Dan Kubb <dan.kubb-cpan@onautopilot.com>
 
 Drew Taylor
@@ -2954,6 +3147,8 @@ numa: Dan Sully <daniel@cpan.org>
 
 obra: Jesse Vincent
 
+Octavian Rasnita
+
 omega: Andreas Marienborg
 
 Oleg Kostyuk <cub.uanic@gmail.com>
@@ -2967,6 +3162,8 @@ random: Roland Lammel <lammel@cpan.org>
 Robert Sedlacek C<< <rs@474.at> >>
 
 sky: Arthur Bergman
+
+szbalint: Balint Szilakszi <szbalint@cpan.org>
 
 t0m: Tomas Doran <bobtfish@bobtfish.net>
 

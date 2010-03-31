@@ -65,7 +65,7 @@ will turn the Catalyst::Response into a HTTP Response and return it to the clien
 
 =head1 METHODS
 
-=head2 $res->body(<$text|$fh|$iohandle_object)
+=head2 $res->body( $text | $fh | $iohandle_object )
 
     $c->response->body('Catalyst rocks!');
 
@@ -150,7 +150,7 @@ C<302>.
 
 This is a convenience method that sets the Location header to the
 redirect destination, and then sets the response status.  You will
-want to C< return; > or C< $c->detach() > to interrupt the normal
+want to C< return > or C<< $c->detach() >> to interrupt the normal
 processing flow if you want the redirect to occur straight away.
 
 =cut

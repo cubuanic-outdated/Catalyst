@@ -1,14 +1,12 @@
 use strict;
 use warnings;
-use inc::Module::Install 0.87;
-{   # Ensure that these get used - yes, M::I loads them for us, but if you're
-    # in author mode and don't have them installed, then the error is tres
-    # cryptic.
-    no warnings 'redefine';
-    use Module::Install::AuthorRequires;
-    use Module::Install::CheckConflicts;
-    use Module::Install::AuthorTests;
-}
+use inc::Module::Install 0.91;
+# Ensure that these get used - yes, M::I loads them for us, but if you're
+# in author mode and don't have them installed, then the error is tres
+# cryptic.
+use Module::Install::AuthorRequires;
+use Module::Install::CheckConflicts;
+use Module::Install::AuthorTests;
 
 perl_version '5.008004';
 
@@ -17,12 +15,13 @@ all_from 'lib/Catalyst/Runtime.pm';
 
 requires 'List::MoreUtils';
 requires 'namespace::autoclean' => '0.09';
-requires 'namespace::clean';
+requires 'namespace::clean' => '0.13';
 requires 'B::Hooks::EndOfScope' => '0.08';
 requires 'MooseX::Emulate::Class::Accessor::Fast' => '0.00903';
-requires 'Class::MOP' => '0.83';
-requires 'Moose' => '0.90';
-requires 'MooseX::MethodAttributes::Inheritable' => '0.17';
+requires 'Class::MOP' => '0.95';
+requires 'Moose' => '0.93';
+requires 'MooseX::MethodAttributes::Inheritable' => '0.19';
+requires 'MooseX::Role::WithOverloading' => '0.05';
 requires 'Carp';
 requires 'Class::C3::Adopt::NEXT' => '0.07';
 requires 'CGI::Simple::Cookie';
@@ -30,9 +29,9 @@ requires 'Data::Dump';
 requires 'HTML::Entities';
 requires 'HTTP::Body'    => '1.04'; # makes uploadtmp work
 requires 'HTTP::Headers' => '1.64';
-requires 'HTTP::Request';
-requires 'HTTP::Response';
-requires 'HTTP::Request::AsCGI' => '0.8';
+requires 'HTTP::Request' => '5.814';
+requires 'HTTP::Response' => '5.813';
+requires 'HTTP::Request::AsCGI' => '1.0';
 requires 'LWP::UserAgent';
 requires 'Module::Pluggable' => '3.9';
 requires 'Path::Class' => '0.09';
@@ -46,12 +45,14 @@ requires 'URI' => '1.35';
 requires 'Task::Weaken';
 requires 'Text::Balanced'; # core in 5.8.x but mentioned for completeness
 requires 'MRO::Compat';
+requires 'MooseX::Getopt' => '0.25';
+requires 'MooseX::Types';
+requires 'MooseX::Types::Common::Numeric';
 requires 'String::RewritePrefix' => '0.004'; # Catalyst::Utils::resolve_namespace
-
-recommends 'B::Hooks::OP::Check::StashChange';
 
 test_requires 'Class::Data::Inheritable';
 test_requires 'Test::Exception';
+test_requires 'Test::More' => '0.88';
 
 # aggregate tests if AGGREGATE_TESTS is set and a recent Test::Aggregate and a Test::Simple it works with is available
 if ($ENV{AGGREGATE_TESTS} && can_use('Test::Simple', '0.88') && can_use('Test::Aggregate', '0.35_05')) {
@@ -63,7 +64,8 @@ else {
         grep { $_ ne 't/aggregate.t' }
         map  { glob } qw[t/*.t t/aggregate/*.t];
 }
-author_requires 'CatalystX::LeakChecker', '0.03'; # Skipped if this isn't installed
+author_requires 'CatalystX::LeakChecker', '0.05'; # Skipped if this isn't installed
+author_requires 'File::Copy::Recursive'; # For http server test
 
 author_tests 't/author';
 author_requires(map {; $_ => 0 } qw(
@@ -99,7 +101,8 @@ print <<"EOF";
     you also install the development tools package Catalyst::Devel.
 
         perl -MCPANPLUS -e 'install Catalyst::Devel' # or
-        perl -MCPAN -e 'install Catalyst::Devel'
+        perl -MCPAN -e 'install Catalyst::Devel'     # or
+        cpanm Catalyst::Devel
 
     To get some commonly used plugins, as well as the TT view and DBIC
     model, install Task::Catalyst in the same way.
@@ -110,6 +113,7 @@ EOF
 # NOTE - This is the version number of the _incompatible_ code,
 #        not the version number of the fixed version.
 my %conflicts = (
+    'Catalyst::Plugin::SubRequest' => '0.14',
     'Catalyst::Model::Akismet' => '0.02',
     'Catalyst::Component::ACCEPT_CONTEXT' => '0.06',
     'Catalyst::Plugin::ENV' => '9999', # This plugin is just stupid, full stop
@@ -153,7 +157,7 @@ sub darwin_check_no_resource_forks {
         my $attr = $osx_ver =~ /^10.(5|6)/  ? 'COPYFILE_DISABLE' : 'COPY_EXTENDED_ATTRIBUTES_DISABLE';
 
         makemaker_args(dist => { PREOP => qq{\@if [ "\$\$$attr" != "true" ]; then}.
-                                          qq{ echo "You must set the ENV variable $attr to true,"; }.
+                                          qq{ echo "You must set the ENV variable $attr to 'true',"; }.
                                           ' echo "to avoid getting resource forks in your dist."; exit 255; fi' });
     }
 }

@@ -339,7 +339,7 @@ sub run {
         use Config;
         $ENV{PERL5LIB} .= join $Config{path_sep}, @INC;
 
-        exec $^X, $0, @{ $options->{argv} };
+        exec $^X, $0, @{ $options->{argv} || [] };
     }
 
     exit;
@@ -534,11 +534,19 @@ sub _socket_data {
         peeraddr  => $iaddr
             ? ( inet_ntoa($iaddr) || '127.0.0.1' )
             : '127.0.0.1',
-        localname => gethostbyaddr( $localiaddr, AF_INET ) || 'localhost',
+        localname => _gethostbyaddr( $localiaddr ),
         localaddr => inet_ntoa($localiaddr) || '127.0.0.1',
     };
 
     return $data;
+}
+
+{   # If you have a crappy DNS server then these can be slow, so cache 'em
+    my %hostname_cache;
+    sub _gethostbyaddr {
+        my $ip = shift;
+        $hostname_cache{$ip} ||= gethostbyaddr( $ip, AF_INET ) || 'localhost';
+    }
 }
 
 sub _inet_addr { unpack "N*", inet_aton( $_[0] ) }

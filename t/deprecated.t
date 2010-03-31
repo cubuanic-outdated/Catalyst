@@ -9,7 +9,10 @@ use Test::More tests => 4;
 my $warnings;
 BEGIN { # Do this at compile time in case we generate a warning when use
         # DeprecatedTestApp
-    $SIG{__WARN__} = sub { $warnings++ if $_[0] =~ /trying to use NEXT/ };
+    $SIG{__WARN__} = sub {
+        $warnings++ if $_[0] =~ /uses NEXT, which is deprecated/;
+        $warnings++ if $_[0] =~ /trying to use NEXT, which is deprecated/;
+    };
 }
 use Catalyst; # Cause catalyst to be used so I can fiddle with the logging.
 my $mvc_warnings;
@@ -36,7 +39,4 @@ is( $mvc_warnings, 1, 'Get the ::MVC:: warning' );
 ok( my $response = request('http://localhost/'), 'Request' );
 is( $response->header('X-Catalyst-Plugin-Deprecated'), '1', 'NEXT plugin ran correctly' );
 
-SKIP: {
-    skip 'non-dev release', 1 unless Catalyst::_IS_DEVELOPMENT_VERSION();
-    is( $warnings, 1, 'Got one and only one Adopt::NEXT warning');
-}
+is( $warnings, 1, 'Got one and only one Adopt::NEXT warning');

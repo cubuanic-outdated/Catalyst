@@ -20,7 +20,7 @@ sub foo
 }
 
 sub partway1
-	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
+    :ActionClass('+TestApp::Action::MatchCapturesRegexp')
     :PathPart('partway') 
     :Chained('foo')
     :MatchCapturesRegexp('\dx\d')
@@ -30,7 +30,7 @@ sub partway1
     }
 
 sub endpointx
-	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
+    :ActionClass('+TestApp::Action::MatchCapturesRegexp')
     :PathPart('end') 
     :Chained('partway1')
     :MatchCapturesRegexp('\d')
@@ -40,7 +40,7 @@ sub endpointx
     }
 
 sub endpoint1
-	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
+    :ActionClass('+TestApp::Action::MatchCapturesRegexp')
     :PathPart('end') 
     :Chained('foo')
     :MatchCapturesRegexp('\d')
@@ -50,7 +50,7 @@ sub endpoint1
     }
 
 sub endpoint2
-	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
+    :ActionClass('+TestApp::Action::MatchCapturesRegexp')
     :PathPart('end') 
     :Chained('foo')
     :MatchCapturesRegexp('\d\d')
@@ -60,7 +60,7 @@ sub endpoint2
     }
 
 sub endpoint3
-	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
+    :ActionClass('+TestApp::Action::MatchCapturesRegexp')
     :PathPart('end') 
     :Chained('foo')
     :MatchCapturesRegexp('\d,"\d\d"')

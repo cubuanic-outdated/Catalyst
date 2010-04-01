@@ -10,7 +10,7 @@ our $iters;
 
 BEGIN { $iters = $ENV{CAT_BENCH_ITERS} || 1; }
 
-use Test::More tests => 16*$iters;
+use Test::More tests => 24*$iters;
 use Catalyst::Test 'TestApp';
 
 if ( $ENV{CAT_BENCHMARK} ) {
@@ -24,6 +24,20 @@ else {
 }
 
 sub run_tests {
+    {
+        ok(
+            my $response =
+              request('http://localhost/action/chainedmatchargs/1/end/22/3'),
+            'Request'
+        );
+        ok( $response->is_success, 'Response Successful 2xx' );
+        is( $response->content_type, 'text/plain', 'Response Content-Type' );
+        is(
+            $response->header('X-Catalyst-Action-Private'),
+            'action/chainedmatchargs/endpoint4',
+            'Test Action'
+        );
+    }
     {
         ok(
             my $response =
@@ -67,6 +81,22 @@ sub run_tests {
         );
     }
     {
+        ## Repeat test to fail order sensitive action bugs
+        ok(
+            my $response =
+              request('http://localhost/action/chainedmatchargs/2/partway/5x5/end/9'),
+            'Request'
+        );
+        ok( $response->is_success, 'Response Successful 2xx' );
+        is( $response->content_type, 'text/plain', 'Response Content-Type' );
+        is(
+            $response->header('X-Catalyst-Action-Private'),
+            'action/chainedmatchargs/endpointx',
+            'Test Action'
+        );
+    }
+    {
+        ## Repeat test to fail order sensitive action bugs
         ok(
             my $response =
               request('http://localhost/action/chainedmatchargs/1/end/22/3'),

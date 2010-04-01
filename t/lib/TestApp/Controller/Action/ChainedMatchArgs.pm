@@ -19,6 +19,26 @@ sub foo
         die "more than 1 argument" if @args > 1;
 }
 
+sub partway1
+	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
+    :PathPart('partway') 
+    :Chained('foo')
+    :MatchCapturesRegexp('\dx\d')
+    :CaptureArgs(1) {
+    	my ($self, $c, @args) = @_;
+        $c->forward('TestApp::View::Dump::Request');    
+    }
+
+sub endpointx
+	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
+    :PathPart('end') 
+    :Chained('partway1')
+    :MatchCapturesRegexp('\d')
+    :Args(1) {
+    	my ($self, $c, @args) = @_;
+        $c->forward('TestApp::View::Dump::Request');    
+    }
+
 sub endpoint1
 	:ActionClass('+TestApp::Action::MatchCapturesRegexp')
     :PathPart('end') 

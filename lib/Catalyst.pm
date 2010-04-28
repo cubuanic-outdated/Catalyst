@@ -318,7 +318,7 @@ cookies, HTTP headers, etc.). See L<Catalyst::Request>.
 
 =head2 $c->forward( $action [, \@arguments ] )
 
-=head2 $c->forward( $class, $method, [, \@arguments ] )
+=head2 $c->forward( $class|$object, $method, [, \@arguments ] )
 
 Forwards processing to another action, by its private name. If you give a
 class name but no method, C<process()> is called. You may also optionally

@@ -333,6 +333,7 @@ sub _invoke_as_component {
                 name      => $method,
                 code      => $code,
                 reverse   => "$component_class->$method",
+                component => $component,
                 class     => $component_class,
                 namespace => Catalyst::Utils::class2prefix(
                     $component_class, ref($c)->config->{case_sensitive}

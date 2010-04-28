@@ -42,6 +42,11 @@ sub compobj : Local {
     $c->forward( $c->controller('Action::Forward'), 'three' );
 }
 
+sub footest : Local {
+    my($self, $c) = @_;
+    $c->forward('View::Dummy');
+}
+
 sub inheritance : Local {
     my ( $self, $c ) = @_;
     $c->forward('/action/inheritance/a/b/default');

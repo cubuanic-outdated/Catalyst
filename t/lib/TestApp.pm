@@ -3,8 +3,8 @@ package TestApp;
 use strict;
 use Catalyst qw/
     Test::MangleDollarUnderScore
-    Test::Errors 
-    Test::Headers 
+    Test::Errors
+    Test::Headers
     Test::Plugin
     Test::Inline
     +TestApp::Plugin::FullyQualified
@@ -43,7 +43,7 @@ TestApp->setup;
 
 sub execute {
     my $c      = shift;
-    my $class  = ref( $c->component( $_[0] ) ) || $_[0];
+    my $class  = ref( $c->component( $_[0] ) ) || ref($_[0]) || $_[0];
     my $action = $_[1]->reverse;
 
     my $method;
@@ -75,9 +75,9 @@ sub execute {
 # useful info if something crashes during a test
 sub finalize_error {
     my $c = shift;
-    
+
     $c->next::method(@_);
-    
+
     $c->res->status(500);
     $c->res->body( 'FATAL ERROR: ' . join( ', ', @{ $c->error } ) );
 }
@@ -87,7 +87,7 @@ sub finalize_error {
     sub Catalyst::Log::error { }
 }
 
-# Make sure we can load Inline plugins. 
+# Make sure we can load Inline plugins.
 
 package Catalyst::Plugin::Test::Inline;
 

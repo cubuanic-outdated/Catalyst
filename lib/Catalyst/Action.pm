@@ -25,6 +25,7 @@ with 'MooseX::Emulate::Class::Accessor::Fast';
 use namespace::clean -except => 'meta';
 
 has class => (is => 'rw');
+has component => (is => 'rw');
 has namespace => (is => 'rw');
 has 'reverse' => (is => 'rw');
 has attributes => (is => 'rw');
@@ -57,7 +58,7 @@ no warnings 'recursion';
 
 sub dispatch {    # Execute ourselves against a context
     my ( $self, $c ) = @_;
-    return $c->execute( $self->class, $self );
+    return $c->execute( ($self->component || $self->class), $self );
 }
 
 sub execute {

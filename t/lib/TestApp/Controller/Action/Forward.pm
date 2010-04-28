@@ -34,6 +34,14 @@ sub jojo : Local {
     $c->forward( $c->controller('Action::Forward'), 'three' );
 }
 
+sub compobj : Local {
+    my ( $self, $c ) = @_;
+    my $view = $c->stash->{forward_target} = $c->view(Dummy => 'foo');
+    $c->forward($view);
+    $c->forward('one');
+    $c->forward( $c->controller('Action::Forward'), 'three' );
+}
+
 sub inheritance : Local {
     my ( $self, $c ) = @_;
     $c->forward('/action/inheritance/a/b/default');

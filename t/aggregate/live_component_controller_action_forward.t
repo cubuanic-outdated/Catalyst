@@ -10,7 +10,7 @@ our $iters;
 
 BEGIN { $iters = $ENV{CAT_BENCH_ITERS} || 1; }
 
-use Test::More tests => 53 * $iters;
+use Test::More tests => 60 * $iters;
 use Catalyst::Test 'TestApp';
 
 if ( $ENV{CAT_BENCHMARK} ) {
@@ -92,6 +92,47 @@ sub run_tests {
         is( $response->content_type, 'text/plain', 'Response Content-Type' );
         is( $response->header('X-Catalyst-Action'),
             'action/forward/jojo', 'Test Action' );
+        is(
+            $response->header('X-Test-Class'),
+            'TestApp::Controller::Action::Forward',
+            'Test Class'
+        );
+        is( $response->header('X-Catalyst-Executed'),
+            $expected, 'Executed actions' );
+        like(
+            $response->content,
+            qr/^bless\( .* 'Catalyst::Request' \)$/s,
+            'Content is a serialized Catalyst::Request'
+        );
+    }
+
+    {
+        my @expected = qw[
+          TestApp::Controller::Action::Forward->begin
+          TestApp::Controller::Action::Forward->compobj
+          TestApp::View::Dummy->process
+          TestApp::Controller::Action::Forward->one
+          TestApp::Controller::Action::Forward->two
+          TestApp::Controller::Action::Forward->three
+          TestApp::Controller::Action::Forward->four
+          TestApp::Controller::Action::Forward->five
+          TestApp::View::Dump::Request->process
+          TestApp::Controller::Action::Forward->three
+          TestApp::Controller::Action::Forward->four
+          TestApp::Controller::Action::Forward->five
+          TestApp::View::Dump::Request->process
+          TestApp::Controller::Root->end
+        ];
+
+        my $expected = join( ", ", @expected );
+
+        # test forward to a component object
+        ok( my $response = request('http://localhost/action/forward/compobj'),
+            'Request' );
+        ok( $response->is_success, 'Response Successful 2xx' );
+        is( $response->content_type, 'text/plain', 'Response Content-Type' );
+        is( $response->header('X-Catalyst-Action'),
+            'action/forward/compobj', 'Test Action' );
         is(
             $response->header('X-Test-Class'),
             'TestApp::Controller::Action::Forward',

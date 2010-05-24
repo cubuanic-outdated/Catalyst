@@ -5,11 +5,13 @@ use base 'TestApp::Controller::Action';
 
 __PACKAGE__->config(
     actions => {
+        '*'   => { Global => 1 },
         action_action_five => { ActionClass => '+Catalyst::Action::TestBefore' },
     },
     action_args => {
         '*'                 => { extra_arg         => 42 },
         action_action_seven => { another_extra_arg => 23 },
+        action_action_eight => { another_extra_arg => 23 },
     },
 );
 
@@ -50,5 +52,11 @@ sub action_action_seven : Global : ActionClass('~TestExtraArgsAction') {
     my ( $self, $c ) = @_;
     $c->forward('TestApp::View::Dump::Request');
 }
+
+sub action_action_eight : ActionClass('~TestExtraArgsAction') {
+    my ( $self, $c ) = @_;
+    $c->forward('TestApp::View::Dump::Request');
+}
+
 
 1;

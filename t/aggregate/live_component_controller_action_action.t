@@ -166,6 +166,27 @@ sub run_tests {
             'Content is a serialized Catalyst::Request'
         );
     }
+
+    {
+        ok( my $response = request('http://localhost/action_action_eight'),
+            'Request' );
+        ok( $response->is_success, 'Response Successful 2xx' );
+        is( $response->content_type, 'text/plain', 'Response Content-Type' );
+        is( $response->header('X-Catalyst-Action'),
+            'action_action_eight', 'Test Action' );
+        is(
+            $response->header('X-Test-Class'),
+            'TestApp::Controller::Action::Action',
+            'Test Class'
+        );
+        is( $response->header('X-TestExtraArgsAction'), '42,23', 'Extra args get passed to action contstructor' );
+        like(
+            $response->content,
+            qr/^bless\( .* 'Catalyst::Request' \)$/s,
+            'Content is a serialized Catalyst::Request'
+        );
+    }
+
 }
 
 done_testing;

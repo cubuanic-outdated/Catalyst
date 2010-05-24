@@ -198,7 +198,7 @@ sub get_action_methods {
                   . $_
                   . '" is not available from controller '
                   . ( ref $self ) )
-          } keys %{ $self->_controller_actions }
+          } grep { $_ ne '*' } keys %{ $self->_controller_actions }
     ) if ( ref $self );
     return uniq @methods;
 }
@@ -318,6 +318,13 @@ sub _parse_attrs {
             push( @{ $final_attributes{$key} }, $value );
         }
     }
+
+    # ignore atrributes defined by config->( action => { '*' => ... } )
+    # for Private methods
+    if ( $final_attributes{Private} && exists $actions->{'*'} ) {
+        return { Private => $final_attributes{Private} };
+    }
+
 
     return \%final_attributes;
 }

@@ -3,6 +3,7 @@
  Bug fixes:
   - Fix the --mech and --mechanize options to the myapp_create.pl script
     to operate correctly by fixing the options passed down into the script.
+  - Fix setting actions attributes with '*' [RT#57780]
 
  Documentation:
   - Fix missing - in the docs when describing the --mechanize option at one

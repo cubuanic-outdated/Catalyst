@@ -79,7 +79,7 @@ __PACKAGE__->stats_class('Catalyst::Stats');
 
 # Remember to update this in Catalyst::Runtime as well!
 
-our $VERSION = '5.80023';
+our $VERSION = '5.80024';
 
 sub import {
     my ( $class, @arguments ) = @_;
@@ -281,14 +281,15 @@ Specifies a comma-delimited list of log levels.
 
 =head2 -Stats
 
-Enables statistics collection and reporting. You can also force this setting
-from the system environment with CATALYST_STATS or <MYAPP>_STATS. The
-environment settings override the application, with <MYAPP>_STATS having the
-highest priority.
+Enables statistics collection and reporting.
 
-e.g.
+   use Catalyst qw/-Stats=1/;
 
-   use Catalyst qw/-Stats=1/
+You can also force this setting from the system environment with CATALYST_STATS
+or <MYAPP>_STATS. The environment settings override the application, with
+<MYAPP>_STATS having the highest priority.
+
+Stats are also enabled if L<< debugging |/"-Debug" >> is enabled.
 
 =head1 METHODS
 
@@ -891,7 +892,7 @@ component is constructed.
 For example:
 
     MyApp->config({ 'Model::Foo' => { bar => 'baz', overrides => 'me' } });
-    MyApp::Model::Foo->config({ quux => 'frob', 'overrides => 'this' });
+    MyApp::Model::Foo->config({ quux => 'frob', overrides => 'this' });
 
 will mean that C<MyApp::Model::Foo> receives the following data when
 constructed:
@@ -901,6 +902,21 @@ constructed:
         quux => 'frob',
         overrides => 'me',
     });
+
+It's common practice to use a Moose attribute
+on the receiving component to access the config value.
+
+    package MyApp::Model::Foo;
+
+    use Moose;
+
+    # this attr will receive 'baz' at construction time
+    has 'bar' => ( 
+        is  => 'rw',
+        isa => 'Str',
+    );
+
+You can then get the value 'baz' by calling $c->model('Foo')->bar
 
 =cut
 
@@ -2405,10 +2421,6 @@ sub setup_components {
         # we know M::P::O found a file on disk so this is safe
 
         Catalyst::Utils::ensure_class_loaded( $component, { ignore_loaded => 1 } );
-
-        # Needs to be done as soon as the component is loaded, as loading a sub-component
-        # (next time round the loop) can cause us to get the wrong metaclass..
-        $class->_controller_init_base_classes($component);
     }
 
     for my $component (@comps) {
@@ -2418,7 +2430,6 @@ sub setup_components {
             : $class->expand_component_module( $component, $config );
         for my $component (@expanded_components) {
             next if $comps{$component};
-            $class->_controller_init_base_classes($component); # Also cover inner packages
             $class->components->{ $component } = $class->setup_component($component);
         }
     }
@@ -2470,19 +2481,6 @@ sub expand_component_module {
 =head2 $c->setup_component
 
 =cut
-
-# FIXME - Ugly, ugly hack to ensure the we force initialize non-moose base classes
-#         nearest to Catalyst::Controller first, no matter what order stuff happens
-#         to be loaded. There are TODO tests in Moose for this, see
-#         f2391d17574eff81d911b97be15ea51080500003
-sub _controller_init_base_classes {
-    my ($app_class, $component) = @_;
-    return unless $component->isa('Catalyst::Controller');
-    foreach my $class ( reverse @{ mro::get_linear_isa($component) } ) {
-        Moose::Meta::Class->initialize( $class )
-            unless find_meta($class);
-    }
-}
 
 sub setup_component {
     my( $class, $component ) = @_;
@@ -2830,15 +2828,24 @@ the plugin name does not begin with C<Catalyst::Plugin::>.
 Returns an arrayref of the internal execution stack (actions that are
 currently executing).
 
+=head2 $c->stats
+
+Returns the current timing statistics object. By default Catalyst uses
+L<Catalyst::Stats|Catalyst::Stats>, but can be set otherwise with
+L<< stats_class|/"$c->stats_class" >>.
+
+Even if L<< -Stats|/"-Stats" >> is not enabled, the stats object is still
+available. By enabling it with C< $c->stats->enabled(1) >, it can be used to
+profile explicitly, although MyApp.pm still won't profile nor output anything
+by itself.
+
 =head2 $c->stats_class
 
-Returns or sets the stats (timing statistics) class.
+Returns or sets the stats (timing statistics) class. L<Catalyst::Stats|Catalyst::Stats> is used by default.
 
 =head2 $c->use_stats
 
-Returns 1 when stats collection is enabled.  Stats collection is enabled
-when the -Stats options is set, debug is on or when the <MYAPP>_STATS
-environment variable is set.
+Returns 1 when L<< stats collection|/"-Stats" >> is enabled.
 
 Note that this is a static method, not an accessor and should be overridden
 by declaring C<sub use_stats { 1 }> in your MyApp.pm, not by calling C<< $c->use_stats(1) >>.
@@ -2933,6 +2940,12 @@ C<< $c->components >>).
 
 C<show_internal_actions> - If true, causes internal actions such as C<< _DISPATCH >>
 to be shown in hit debug tables in the test server.
+
+=item *
+
+C<use_request_uri_for_path> - Controlls if the C<REQUEST_URI> or C<PATH_INFO> environment
+variable should be used for determining the request path. See L<Catalyst::Engine::CGI/PATH DECODING>
+for more information.
 
 =item *
 
@@ -3165,6 +3178,8 @@ random: Roland Lammel <lammel@cpan.org>
 
 Robert Sedlacek C<< <rs@474.at> >>
 
+SpiceMan: Marcel Montes
+
 sky: Arthur Bergman
 
 szbalint: Balint Szilakszi <szbalint@cpan.org>
@@ -3182,6 +3197,8 @@ willert: Sebastian Willert <willert@cpan.org>
 wreis: Wallace Reis <wallace@reis.org.br>
 
 Yuval Kogman, C<nothingmuch@woobling.org>
+
+rainboxx: Matthias Dietrich, C<perl@rainboxx.de>
 
 =head1 LICENSE
 

@@ -86,8 +86,20 @@ use Catalyst::Engine::CGI;
     is ''.$r->base, 'http://www.foo.com/oslobilder/', 'base correct';
 }
 
+# CGI hit on IIS for non / based app
 {
-    local $TODO = 'Another mod_rewrite case';
+    my $r = get_req(0,
+        SERVER_SOFTWARE => 'Microsoft-IIS/6.0',
+        PATH_INFO => '/bobtfish/Gitalist/script/gitalist.cgi/static/css/blueprint/screen.css',
+        SCRIPT_NAME => '/bobtfish/Gitalist/script/gitalist.cgi',
+        PATH_TRANSLATED =>
+'C:\\Inetpub\\vhosts\\foo.com\\httpdocs\\bobtfish\\Gitalist\\script\\gitalist.cgi\\static\\css\\blueprint\\screen.css',
+    );
+    is ''.$r->uri, 'http://www.foo.com/bobtfish/Gitalist/script/gitalist.cgi/static/css/blueprint/screen.css';
+    is ''.$r->base, 'http://www.foo.com/bobtfish/Gitalist/script/gitalist.cgi/';
+}
+
+{
     my $r = get_req (0,
         PATH_INFO => '/auth/login',
         SCRIPT_NAME => '/tx',
@@ -112,7 +124,6 @@ use Catalyst::Engine::CGI;
     is $r->path, 'engine/request/uri/Rx(here)', 'URI contains correct path';
     is $r->base, 'http://www.foo.com/', 'Base is correct';
 }
-
 
 # FIXME - Test proxy logic
 #       - Test query string

@@ -644,9 +644,8 @@ sub controller {
     my $appclass = ref($c) || $c;
     if( $name ) {
         unless ( ref($name) ) { # Direct component hash lookup to avoid costly regexps
-            my $comps = $c->components;
             my $check = $appclass."::Controller::".$name;
-            return $c->_filter_component( $comps->{$check}, @args ) if exists $comps->{$check};
+            return $c->_filter_component( $c->container->get_sub_container('controller')->get_service($check)->get, @args ) if $c->container->get_sub_container('controller')->has_service($check);
         }
         my @result = $c->_comp_search_prefixes( $name, qw/Controller C/ );
         return map { $c->_filter_component( $_, @args ) } @result if ref $name;
@@ -682,9 +681,8 @@ sub model {
     my $appclass = ref($c) || $c;
     if( $name ) {
         unless ( ref($name) ) { # Direct component hash lookup to avoid costly regexps
-            my $comps = $c->components;
             my $check = $appclass."::Model::".$name;
-            return $c->_filter_component( $comps->{$check}, @args ) if exists $comps->{$check};
+            return $c->_filter_component( $c->container->get_sub_container('model')->get_service($check)->get, @args ) if $c->container->get_sub_container('model')->has_service($check);
         }
         my @result = $c->_comp_search_prefixes( $name, qw/Model M/ );
         return map { $c->_filter_component( $_, @args ) } @result if ref $name;
@@ -741,9 +739,8 @@ sub view {
     my $appclass = ref($c) || $c;
     if( $name ) {
         unless ( ref($name) ) { # Direct component hash lookup to avoid costly regexps
-            my $comps = $c->components;
             my $check = $appclass."::View::".$name;
-            return $c->_filter_component( $comps->{$check}, @args ) if exists $comps->{$check};
+            return $c->_filter_component( $c->container->get_sub_container('view')->get_service($check)->get, @args ) if $c->container->get_sub_container('view')->has_service($check);
         }
         my @result = $c->_comp_search_prefixes( $name, qw/View V/ );
         return map { $c->_filter_component( $_, @args ) } @result if ref $name;

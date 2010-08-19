@@ -911,7 +911,7 @@ on the receiving component to access the config value.
     use Moose;
 
     # this attr will receive 'baz' at construction time
-    has 'bar' => ( 
+    has 'bar' => (
         is  => 'rw',
         isa => 'Str',
     );
@@ -1073,11 +1073,17 @@ sub setup {
     # Process options
     my $flags = {};
 
+    my $config = $class->config;
+    # old gross behaviour
+    my $old_and_ghetto = !defined $config->{log};
+    my $debug_mode;
     foreach (@arguments) {
-
         if (/^-Debug$/) {
-            $flags->{log} =
-              ( $flags->{log} ) ? 'debug,' . $flags->{log} : 'debug';
+            if ($old_and_ghetto) {
+               $flags->{log} = ( $flags->{log} ) ? "debug,$flags->{log}" : 'debug';
+            } else {
+               $debug_mode = 1
+            }
         }
         elsif (/^-(\w+)=?(.*)$/) {
             $flags->{ lc $1 } = $2;
@@ -1089,7 +1095,7 @@ sub setup {
 
     $class->setup_home( delete $flags->{home} );
 
-    $class->setup_log( delete $flags->{log} );
+    $class->setup_log( delete $flags->{log}, $debug_mode );
     $class->setup_plugins( delete $flags->{plugins} );
     $class->setup_dispatcher( delete $flags->{dispatcher} );
     $class->setup_engine( delete $flags->{engine} );
@@ -2701,28 +2707,52 @@ that this method won't actually set up the log object.
 
 =cut
 
+sub setup_debug {
+    my $class      = shift;
+    my $levels     = shift; # <-- for backcompat
+    my $debug_mode = shift;
+
+    my $config = $class->config;
+    my $is_app_debug;
+
+    if (!defined $config->{log}) {
+       my $env_debug = Catalyst::Utils::env_value( $class, 'DEBUG' );
+
+       if ( defined $env_debug ) {
+           $levels->{debug} = 1 if $env_debug; # Ugly!
+           delete $levels->{debug} unless $env_debug;
+       }
+
+       $is_app_debug = $levels->{debug};
+    } else {
+       $is_app_debug = $debug_mode ||
+         !!(Catalyst::Utils::env_value( $class, 'DEBUG' ));
+    }
+
+    if ($is_app_debug) {
+       Class::MOP::get_metaclass_by_name($class)->add_method(debug => sub {1});
+       return 1
+    }
+}
+
 sub setup_log {
-    my ( $class, $levels ) = @_;
+    my ( $class, $levels, $debug_mode ) = @_;
 
     $levels ||= '';
     $levels =~ s/^\s+//;
     $levels =~ s/\s+$//;
     my %levels = map { $_ => 1 } split /\s*,\s*/, $levels;
 
-    my $env_debug = Catalyst::Utils::env_value( $class, 'DEBUG' );
-    if ( defined $env_debug ) {
-        $levels{debug} = 1 if $env_debug; # Ugly!
-        delete($levels{debug}) unless $env_debug;
-    }
+    # setup_log is calling setup_debug because of some strange decisions
+    # made in the past where if you set your log level to be debug it
+    # turned all of the application debug features on
+    my $debug = $class->setup_debug(\%levels, $debug_mode);
 
-    unless ( $class->log ) {
-        $class->log( Catalyst::Log->new(keys %levels) );
-    }
+    $class->log( Catalyst::Log->new(keys %levels) )
+       unless $class->log;
 
-    if ( $levels{debug} ) {
-        Class::MOP::get_metaclass_by_name($class)->add_method('debug' => sub { 1 });
-        $class->log->debug('Debug messages enabled');
-    }
+    $class->log->debug('Debug messages enabled')
+       if $debug;
 }
 
 =head2 $c->setup_plugins

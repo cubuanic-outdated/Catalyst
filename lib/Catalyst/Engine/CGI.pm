@@ -106,6 +106,9 @@ sub prepare_connection {
         $request->address($ip);
         if ( defined $ENV{HTTP_X_FORWARDED_PORT} ) {
             $ENV{SERVER_PORT} = $ENV{HTTP_X_FORWARDED_PORT};
+            if ( $ENV{SERVER_PORT} == 443 ) {
+                $request->secure(1);
+            }
         }
     }
 
@@ -119,9 +122,6 @@ sub prepare_connection {
         $request->secure(1);
     }
 
-    if ( $ENV{SERVER_PORT} == 443 ) {
-        $request->secure(1);
-    }
     binmode(STDOUT); # Ensure we are sending bytes.
 }
 
@@ -215,9 +215,15 @@ sub prepare_path {
     my $uri_class = "URI::$scheme";
 
     # HTTP_HOST will include the port even if it's 80/443
-    $host =~ s/:(?:80|443)$//;
-
-    if ( $port !~ /^(?:80|443)$/ && $host !~ /:/ ) {
+    if ($host =~ s/:(.*)$//) {
+        $port = $1;  # since $ENV{SERVER_PORT} may be missing or wrong
+    }
+    if ($port == 80 and !$c->request->secure or $port == 443 and $c->request->secure) {
+        # The actual port matches the default port for the security status,
+        # so leave $host without a :$port.
+    }
+    else {
+        # The actual port doesn't match the default port for the security status.
         $host .= ":$port";
     }
 

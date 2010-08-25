@@ -3096,6 +3096,8 @@ Chisel Wright C<pause@herlpacker.co.uk>
 
 Danijel Milicevic C<me@danijel.de>
 
+Darren Duncan <darren@darrenduncan.net>
+
 David Kamholz E<lt>dkamholz@cpan.orgE<gt>
 
 David Naughton, C<naughton@umn.edu>

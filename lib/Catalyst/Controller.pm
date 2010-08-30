@@ -274,7 +274,7 @@ sub create_action {
         %{ $action_args->{ $args{name} } || {} },
     );
 
-    return $class->new({ %extra_args, %args });
+    return $class->new({ %extra_args, %args, component => $self });
 }
 
 sub _parse_attrs {

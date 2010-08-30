@@ -25,7 +25,32 @@ with 'MooseX::Emulate::Class::Accessor::Fast';
 use namespace::clean -except => 'meta';
 
 has class => (is => 'rw');
-has component => (is => 'rw');
+has component => (is => 'ro'); #, required => 1);
+
+# 18:08 @t0m:» edenc: Why not change action construction in other places also
+#              so that the controller instance is always passed in
+# 18:09 @t0m:» And you can make the new attribute ro, right?
+# 18:13 @t0m:» edenc: yy, the 'forward to component' case, where an action is
+#              pulled out of the dispatcher's ass, on request.. Sets the
+#              component instance
+# 18:14 @t0m:» But 'normal' actions, constructed in a controller, don't.
+# 18:14 @edenc:» oh, right
+# 18:15 @edenc:» yeah well, I wanted to stick to minimal disruption of the
+#                current code
+# 18:17 @t0m:» I get you, but I'm thinking we should try to keep actions
+#              having the same state in all cases.. The fall back to the
+#              component name you added entirely needs to stay for compat, but
+#              I think it'd be nice if all 'normal' cases have the same state.
+#              The (small) extra disruption is worth the simplification in
+#              terms of the attribute always being filled .
+# 18:17 @t0m:» Does that make sense?
+# 18:17 @edenc:» yes
+# 18:18 @t0m:» cool. I'd like to say 'make it required', but that'll entirely
+#              break someone, somewhere :)
+# 18:20 @t0m:» right, lets assume we would if we could, and make the tests
+#              pass with it required, but not actually turn required on?
+# 18:22 @edenc:» t0m++
+
 has namespace => (is => 'rw');
 has 'reverse' => (is => 'rw');
 has attributes => (is => 'rw');

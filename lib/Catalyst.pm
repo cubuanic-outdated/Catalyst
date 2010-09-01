@@ -1642,13 +1642,18 @@ sub execute {
     push( @{ $c->stack }, $code );
 
     no warnings 'recursion';
-    eval { $c->state( $code->execute( $class, $c, @{ $c->req->args } ) || 0 ) };
+    my ($error, $failed);
+    {
+        local $@;
+        $failed = not eval { $c->state( $code->execute( $class, $c, @{ $c->req->args } ) || 0 ); 1; };
+        $error = $@;
+    }
 
     $c->_stats_finish_execute( $stats_info ) if $c->use_stats and $stats_info;
 
     my $last = pop( @{ $c->stack } );
 
-    if ( my $error = $@ ) {
+    if ( $failed ) {
         if ( blessed($error) and $error->isa('Catalyst::Exception::Detach') ) {
             $error->rethrow if $c->depth > 1;
         }
@@ -1658,6 +1663,7 @@ sub execute {
         else {
             unless ( ref $error ) {
                 no warnings 'uninitialized';
+                $error = 'undef' unless defined $error;
                 chomp $error;
                 my $class = $last->class;
                 my $name  = $last->name;

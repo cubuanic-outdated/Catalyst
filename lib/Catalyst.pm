@@ -1765,14 +1765,7 @@ sub finalize {
             $c->finalize_error;
         }
 
-        $c->finalize_headers;
-
-        # HEAD request
-        if ( $c->request->method eq 'HEAD' ) {
-            $c->response->body('');
-        }
-
-        $c->finalize_body;
+        $c->finalize_response;
     }
 
     $c->log_response;
@@ -1785,6 +1778,28 @@ sub finalize {
     }
 
     return $c->response->status;
+}
+# 22:23 <@mst> sub finalize_response { $self->finalize_headers; $self->finalize_body; }
+# 22:27 <@mst> t0m: thoughts?
+
+# Thoughts: not sure about this, or what ::Encoding is doing.
+#           there are places where finalize_headers is being
+#           called otherwise (e.g. $c->write) and ::Encoding now hooks
+#           them (adding the headers to the blank body) when
+#           previously it won't have done. What's the right thing
+#           to do here?
+
+sub finalize_response {
+    my $c = shift;
+
+    $c->finalize_headers;
+
+    # HEAD request
+    if ( $c->request->method eq 'HEAD' ) {
+        $c->response->body('');
+    }
+
+    $c->finalize_body;
 }
 
 =head2 $c->finalize_body

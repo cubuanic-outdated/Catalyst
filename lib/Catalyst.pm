@@ -79,7 +79,7 @@ __PACKAGE__->stats_class('Catalyst::Stats');
 
 # Remember to update this in Catalyst::Runtime as well!
 
-our $VERSION = '5.80025';
+our $VERSION = '5.80027';
 
 sub import {
     my ( $class, @arguments ) = @_;
@@ -427,6 +427,10 @@ C<< $c->go >> will perform a full dispatch on the specified action or method,
 with localized C<< $c->action >> and C<< $c->namespace >>. Like C<detach>,
 C<go> escapes the processing of the current request chain on completion, and
 does not return to its caller.
+
+@arguments are arguments to the final destination of $action. @captures are
+arguments to the intermediate steps, if any, on the way to the final sub of
+$action.
 
 =cut
 
@@ -1701,7 +1705,7 @@ sub _stats_start_execute {
         my $parent = $c->stack->[-1];
 
         # forward, locate the caller
-        if ( exists $c->counter->{"$parent"} ) {
+        if ( defined $parent && exists $c->counter->{"$parent"} ) {
             $c->stats->profile(
                 begin  => $action,
                 parent => "$parent" . $c->counter->{"$parent"},

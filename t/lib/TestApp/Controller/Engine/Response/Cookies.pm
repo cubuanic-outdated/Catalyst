@@ -1,6 +1,7 @@
 package TestApp::Controller::Engine::Response::Cookies;
 
 use strict;
+use warnings;
 use base 'Catalyst::Base';
 
 sub one : Local {
